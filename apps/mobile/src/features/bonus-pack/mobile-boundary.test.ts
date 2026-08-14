@@ -23,6 +23,12 @@ describe('bonus pack mobile boundary', () => {
     expect(entry).not.toContain("filter(({ status }) => status === 'sealed')");
   });
 
+  it('explains the regional pool and missing-special priority', async () => {
+    const rules = await source('./bonus-pack-rules-card.tsx');
+    expect(rules).toContain("'bonusPack.regionalPool'");
+    expect(rules).toContain("'bonusPack.missingSpecialFirst'");
+  });
+
   it('contains no bundled special artwork, audio, BGM, or autoplay path', async () => {
     const [special, detail, shell] = await Promise.all([
       source('../../components/special-card-face.tsx'),

@@ -155,6 +155,8 @@ const bonusPackKeys = [
   'bonusPack.odds',
   'bonusPack.guarantee',
   'bonusPack.oneDaily',
+  'bonusPack.regionalPool',
+  'bonusPack.missingSpecialFirst',
   'bonusPack.noExpiry',
   'bonusPack.noPurchase',
   'bonusPack.specialApproval',
