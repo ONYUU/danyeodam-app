@@ -1,0 +1,197 @@
+:root {
+  color-scheme: light;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f4f0e8;
+  color: #1f2a24;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+}
+
+.shell {
+  width: min(100%, 42rem);
+  padding: 2rem;
+  border: 1px solid #cec7b8;
+  border-radius: 1.25rem;
+  background: #fffdf8;
+  box-shadow: 0 1rem 3rem rgb(63 52 37 / 8%);
+}
+
+h1 {
+  margin: 0 0 0.75rem;
+  font-size: clamp(2rem, 8vw, 4rem);
+  letter-spacing: -0.06em;
+}
+
+p {
+  margin: 0;
+  line-height: 1.7;
+  color: #59635d;
+}
+
+.share-panel {
+  width: min(100%, 36rem);
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem;
+  border: 1px solid #cec7b8;
+  border-radius: 1.25rem;
+  background: #fffdf8;
+  box-shadow: 0 1rem 3rem rgb(63 52 37 / 8%);
+}
+
+.share-panel h1 {
+  font-size: clamp(1.75rem, 7vw, 3rem);
+}
+
+.share-brand,
+.share-note {
+  font-size: 0.875rem;
+}
+
+.share-photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+}
+
+.share-form {
+  display: grid;
+  gap: 0.625rem;
+}
+
+.share-form input,
+.share-form select,
+.share-form textarea,
+.share-form button,
+.share-actions button {
+  min-height: 2.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #9a958a;
+  border-radius: 0.625rem;
+  background: #ffffff;
+  color: inherit;
+  font: inherit;
+}
+
+.share-form button,
+.share-actions button {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.share-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.deletion-panel {
+  width: min(100%, 42rem);
+  display: grid;
+  gap: 1.25rem;
+  padding: clamp(1.25rem, 5vw, 2.25rem);
+  border: 1px solid #cec7b8;
+  border-radius: 1.25rem;
+  background: #fffdf8;
+  box-shadow: 0 1rem 3rem rgb(63 52 37 / 8%);
+}
+
+.deletion-panel h1 {
+  font-size: clamp(1.75rem, 7vw, 3rem);
+}
+
+.deletion-brand {
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.deletion-details {
+  margin: 0;
+}
+
+.deletion-details div {
+  display: grid;
+  grid-template-columns: minmax(6rem, auto) 1fr;
+  gap: 1rem;
+}
+
+.deletion-details dt {
+  font-weight: 700;
+}
+
+.deletion-details dd {
+  margin: 0;
+}
+
+.deletion-form,
+.deletion-status {
+  display: grid;
+  gap: 0.625rem;
+  padding: 1rem;
+  border: 1px solid #ded8cc;
+  border-radius: 0.75rem;
+}
+
+.deletion-form input,
+.deletion-form button,
+.deletion-status button,
+.deletion-actions button {
+  min-height: 2.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #8a857a;
+  border-radius: 0.625rem;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+
+.deletion-form button,
+.deletion-status button,
+.deletion-actions button {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.deletion-form button:disabled,
+.deletion-status button:disabled,
+.deletion-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.deletion-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.deletion-confirm input {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 auto;
+}
+
+.deletion-actions {
+  display: grid;
+  gap: 0.625rem;
+}
+
+.deletion-panel a {
+  color: #20573b;
+  font-weight: 700;
+}

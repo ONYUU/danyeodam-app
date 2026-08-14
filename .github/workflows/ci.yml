@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run security:test-public
+      - run: npm run security:check-public
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+
+  database-upgrade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx supabase start
+      - run: npm run db:test:location-upgrade
+      - run: npm run db:test:account-deletion-upgrade
+      - run: npm run db:test:reviewer-upgrade
+      - if: always()
+        run: npx supabase stop --no-backup
+
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx supabase start
+      - run: npm run db:reset
+      - run: npm run db:test
+      - run: npm run db:test:concurrency
+      - run: npm run db:test:reviewer-concurrency
+      - run: npm run build
+      - run: npm run api:test:account-deletion
+      - run: npm run api:test:auth-email-confirmation
+      - run: npm run api:test:personal-card
+      - run: npm run api:test:share-retro
+      - run: npm run api:test:localized-read
+      - run: npm run api:test:location-compliance
+      - run: npm run api:test:reviewer-access
+      - run: npm run db:lint
+      - run: npm run db:advisors
+      - if: always()
+        run: npx supabase stop --no-backup

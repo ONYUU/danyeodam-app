@@ -1,0 +1,48 @@
+name: Mobile CI
+
+on:
+  pull_request:
+    paths:
+      - "apps/mobile/**"
+      - ".github/workflows/mobile-ci.yml"
+      - "eslint.config.mjs"
+      - "tsconfig.json"
+  push:
+    branches: [main]
+    paths:
+      - "apps/mobile/**"
+      - ".github/workflows/mobile-ci.yml"
+      - "eslint.config.mjs"
+      - "tsconfig.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.19.0
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      - name: Activate the pinned npm version through Corepack
+        run: |
+          corepack enable
+          test "$(node --version)" = "v24.19.0"
+          test "$(corepack npm --version)" = "11.16.0"
+      - run: corepack npm ci
+      - run: corepack npm run check
+      - run: corepack npm run config:assert:production
+      - name: Verify production bundle generation without asserting release approval
+        run: corepack npm run export:production:verify

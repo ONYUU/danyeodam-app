@@ -1,0 +1,44 @@
+name: Public code release preflight
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-preflight-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  mobile-release-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.19.0
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/mobile/package-lock.json
+      - name: Activate the pinned npm version through Corepack
+        run: |
+          corepack enable
+          test "$(node --version)" = "v24.19.0"
+          test "$(corepack npm --version)" = "11.16.0"
+      - name: Install application dependencies
+        run: corepack npm ci
+      - name: Install mobile dependencies
+        run: corepack npm --prefix apps/mobile ci
+      - name: Verify the public repository boundary
+        run: corepack npm run security:test-public && corepack npm run security:check-public
+      - name: Verify the web application
+        run: corepack npm test && corepack npm run typecheck && corepack npm run lint && corepack npm run build
+      - name: Verify the mobile release configuration
+        run: corepack npm --prefix apps/mobile run check && corepack npm --prefix apps/mobile run config:assert:production
+      - name: Verify production bundle generation
+        run: corepack npm --prefix apps/mobile run export:production:verify
+      - name: Explain the private approval boundary
+        run: echo "Signed store builds additionally require DANYEODAM_RELEASE_APPROVAL_FILE in EAS."

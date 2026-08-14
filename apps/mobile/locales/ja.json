@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocationWhenInUseUsageDescription": "DANYEODAMは、トラベルカードの獲得を試みたときだけ現在地を確認します。"
+  }
+}
