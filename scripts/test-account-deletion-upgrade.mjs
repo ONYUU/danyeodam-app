@@ -168,10 +168,13 @@ try {
                  'Account deletion upgrade', 'draft', 37.5, 127.0)`,
       [spotId, `account-upgrade-${fixtureSuffix}`, regionCode],
     );
+    // This harness isolates account-deletion upgrades. Published special-card
+    // cutover and private-asset remediation are covered by the dedicated bonus
+    // pack upgrade harness, so use a non-special catalog fixture here.
     await database.query(
       `insert into public.cards (
          id, spot_id, code, kind, title_ko, title_en, sketch_path, color_hex
-       ) values ($1::uuid, $2::uuid, $3, 'special',
+       ) values ($1::uuid, $2::uuid, $3, 'limited',
                  '계정 삭제 업그레이드 카드', 'Account deletion upgrade card',
                  'cards/account-upgrade.webp', '#204030')`,
       [catalogCardId, spotId, `account-upgrade-${fixtureSuffix}`],

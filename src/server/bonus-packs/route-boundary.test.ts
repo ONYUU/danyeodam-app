@@ -51,6 +51,11 @@ describe("bonus pack HTTP and adapter boundary", () => {
     expect(example).not.toContain("NEXT_PUBLIC_BONUS_PACK");
   });
 
+  it("provides the preview-only account deletion E2E with the required cursor secret", () => {
+    const accountDeletionE2e = source("scripts/test-account-deletion-e2e.mjs");
+    expect(accountDeletionE2e).toContain("BONUS_PACK_CURSOR_SECRET:");
+  });
+
   it("uses the v0.5 acquire commit and does not add a client result choice", () => {
     const acquireRoute = source("src/app/api/acquire/route.ts");
     const acquireRepository = source("src/server/acquire/repository.ts");

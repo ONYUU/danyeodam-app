@@ -314,6 +314,7 @@ try {
       COLLECTION_CURSOR_SECRET: "account-deletion-e2e-collection-secret-0001",
       LOCATION_COMPLIANCE_CURSOR_SECRET:
         "account-deletion-e2e-location-cursor-secret-0001",
+      BONUS_PACK_CURSOR_SECRET: "account-deletion-e2e-bonus-pack-secret-0001",
       ABUSE_HMAC_SECRET: "account-deletion-e2e-abuse-secret-value-0001",
       ACCOUNT_DELETION_RATE_LIMIT_SECRET: rateLimitSecret,
       ACCOUNT_DELETION_SUPPORT_URL: "https://support.example.test/account-deletion",
