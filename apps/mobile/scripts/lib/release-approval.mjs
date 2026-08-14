@@ -95,6 +95,12 @@ export function readReleaseApproval({ approvalFile, repositoryRoot, sourceCommit
     if (typeof value !== 'string' || !SHA_256_PATTERN.test(value)) {
       throw new Error(`The private release approval evidence.${key} value must be a lowercase SHA-256.`);
     }
+    if (/^0{64}$/u.test(value)) {
+      throw new Error(`The private release approval evidence.${key} value must not be a placeholder digest.`);
+    }
+  }
+  if (new Set(Object.values(approval.evidence)).size !== 3) {
+    throw new Error('The three private release approval evidence digests must be distinct.');
   }
 
   return approval;

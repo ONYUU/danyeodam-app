@@ -96,7 +96,17 @@ describe('EAS production private release approval gate', () => {
     delete inheritedEnvironment.DANYEODAM_RELEASE_APPROVAL_FILE;
 
     try {
-      writeFileSync(approvalPath, `${JSON.stringify(approvalDocument())}\n`, { mode: 0o600 });
+      writeFileSync(
+        approvalPath,
+        `${JSON.stringify(approvalDocument({
+          evidence: {
+            cardAssetRightsSha256: '0'.repeat(64),
+            seoulFieldApprovalSha256: '0'.repeat(64),
+            storePacketPrebuildSha256: '0'.repeat(64),
+          },
+        }))}\n`,
+        { mode: 0o600 },
+      );
       chmodSync(approvalPath, 0o600);
       mkdirSync(fakeBin, { mode: 0o700 });
       writeFileSync(
@@ -105,6 +115,26 @@ describe('EAS production private release approval gate', () => {
         { mode: 0o700 },
       );
       chmodSync(setEnvironmentPath, 0o700);
+
+      const placeholderApproval = spawnSync(process.execPath, [gatePath], {
+        cwd: mobileRoot,
+        encoding: 'utf8',
+        env: {
+          ...inheritedEnvironment,
+          PATH: `${fakeBin}${path.delimiter}${process.env.PATH ?? ''}`,
+          EAS_BUILD: 'true',
+          EAS_BUILD_PROFILE: 'production',
+          EAS_BUILD_GIT_COMMIT_HASH: sourceCommitSha,
+          DANYEODAM_RELEASE_APPROVAL_FILE: approvalPath,
+        },
+      });
+      expect(placeholderApproval.status).toBe(1);
+      expect(`${placeholderApproval.stdout}${placeholderApproval.stderr}`).toContain(
+        'must not be a placeholder digest',
+      );
+
+      writeFileSync(approvalPath, `${JSON.stringify(approvalDocument())}\n`, { mode: 0o600 });
+      chmodSync(approvalPath, 0o600);
 
       const production = spawnSync(process.execPath, [gatePath], {
         cwd: mobileRoot,

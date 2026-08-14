@@ -23,7 +23,7 @@ production EAS 빌드는 `DANYEODAM_RELEASE_APPROVAL_FILE`로 전달된 외부 J
 - 공개 checkout 밖의 절대경로에 있는 일반 파일이며 symlink가 아니다.
 - POSIX 환경에서 소유자만 읽고 쓸 수 있다.
 - `sourceCommitSha`가 `EAS_BUILD_GIT_COMMIT_HASH`와 정확히 일치한다.
-- 세 증빙 해시는 비공개 승인 산출물의 실제 SHA-256이다.
+- 세 증빙 해시는 비공개 승인 산출물의 실제 SHA-256이며, 0 해시나 서로 같은 해시는 허용하지 않는다.
 - 허용되지 않은 추가 필드가 없고 상태가 `approved`다.
 
 검증을 통과하면 빌드 SHA를 `EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA`로 후속 EAS 단계에 전달한다.
