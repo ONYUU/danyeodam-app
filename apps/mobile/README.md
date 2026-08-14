@@ -136,7 +136,16 @@ GitHub Actions의 `Public code release preflight` 수동 실행도 공개 코드
 
 ## 의존성 보안 추적
 
-2026-08-15 기준 고정 lockfile에 대해 `npm audit --omit=dev`는 Expo·React Native 빌드 툴체인의 전이 의존성에서 moderate 8건, high 14건을 보고합니다. 현재 자동 수정 제안은 Expo SDK 57을 53으로, React Native 0.86을 0.72로 내리는 비호환 변경이므로 적용하지 않습니다.
+2026-08-15 기준 고정 lockfile에 대해 `npm audit --omit=dev`는 Expo Metro 빌드 툴체인의
+전이 의존성 `image-size` 1.2.1에서 high 14건을 보고합니다. 현재 발행된
+`image-size` 2.0.2까지도 해당 ICNS/JXL/HEIF 무한 루프 권고의 수정 버전이 없습니다.
+이 패키지는 배포된 앱 런타임이 아니라 Metro가 저장소의 신뢰된 정적 자산을 빌드할 때만
+사용합니다. 외부 업로드 파일을 Metro에 전달하지 않으며, 권리 승인된 고정 자산만 빌드합니다.
+따라서 upstream 수정 버전이 나올 때까지 빌드 범위 위험으로 기록하되, 신뢰되지 않은
+이미지가 빌드 입력으로 연결되면 즉시 출시 차단 항목으로 승격합니다.
+
+`xcode` 빌드 의존성이 가져오던 취약한 `uuid` 7.0.3은 npm override로 호환되는
+11.1.1로 상향했습니다. 해당 경로는 Expo native config/prebuild를 다시 검증합니다.
 
 - 매 Expo SDK 57 패치 릴리스와 월 1회 정기 점검 시 `npm audit --omit=dev` 및 Expo Doctor를 재실행합니다.
 - 호환되는 upstream 패치가 나오면 lockfile을 갱신하고 전체 native config·export 검증을 다시 수행합니다.
