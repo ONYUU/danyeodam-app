@@ -37,3 +37,11 @@
 | 2026-08-12 | 서울 첫 6개 현장검증 후보를 LoL PARK 인근 외부 인증지점(청진공원), 광화문광장, DDP·동대문역사문화공원, 홍대 레드로드 R1, 석촌호수공원, 올림픽공원으로 확정. 운영 좌표·반경은 iOS·Android 현장시험 통과 후만 승인 | 공식 관광 수요, 무료 야외 공개 접근, GPS 분리 가능성의 균형. 북촌·유료/실내 의존 후보 제외 |
 | 2026-08-12 | production 개발자 표시명·지원 이메일·주/예비 운영담당은 후보 빌드 전 대표에게 다시 확인하고, 그 전에는 placeholder를 출시 승인으로 간주하지 않음 | 현재 개발을 막지 않되 Store·정책·권리행사 연락처의 최종 일치를 보장 |
 | 2026-08-12 | 정책·번역·spot·지원 운영은 전문 서브에이전트 병렬 감사와 통합 P0/P1 판정을 수행하되, 법률·원어민·권리·현장·운영의 사람 승인을 대체하지 않음 | AI 검수 범위와 외부 출시 승인 책임 분리 |
+| 2026-08-15 | 방문 보상을 `사용자·장소·KST 하루 1회 일반카드`와 `계정·KST 하루 1개 보너스 팩`으로 분리. 보너스는 첫 유효 field 방문만 자격이며 retro/gift·과거 획득 backfill은 제외 | 일반카드 지속 지급 요구를 유지하면서 방문 통계와 확률 보상을 분리 |
+| 2026-08-15 | 보너스 목표 확률은 일반 80%·특별 20%, 4회 연속 일반 뒤 5번째 특별 보장. 결과는 발급 트랜잭션에서 1회 확정하고 팩은 만료하지 않으며 중복은 card ID별 수량 합산 | 하루 1회 구조에서 과도한 희소성을 피하고 재시도·재설치 재추첨을 차단 |
+| 2026-08-15 | acquire에는 결과 없는 sealed pack envelope만 선택적으로 추가하고, 결과는 별도 목록·상세·멱등 개봉 API에서만 공개. 미개봉 결과는 수량 카드함에 포함하지 않음 | 구버전 앱 호환, 봉인 정보 유출 방지, 방문 기록과 소유 수량 UX 분리 |
+| 2026-08-15 | 신규 발급은 서버 전용 `BONUS_PACK_ISSUANCE_SCOPE=off|participants|public`으로 통제하고 기본 off. 특별 TCG 자산은 권리·6개 언어·현장·출시 승인 전 공개 저장소와 발급 pool에서 제외 | 미승인 자산 공개·발급과 운영 설정 오개방 방지 |
+| 2026-08-15 | 첫 출시 보너스 연출은 모션 감소를 지원하는 시각 효과와 선택적 햅틱만 사용하고 BGM·음악은 제외. 결제·광고 추가팩·거래·분해·재화 전환도 제외 | 기능 개발 우선순위와 저작권·과금 확률형 아이템 범위 확대 방지 |
+| 2026-08-15 | 특별 그림은 공개 asset route와 public 일반카드 bucket에서 제외하고, 전용 private `special-card-assets` bucket을 active adult + 실제 opened 소유권 bearer route로만 제공. Storage redirect는 fail closed | UUID·경로 공유 또는 redirect를 통한 봉인 결과·service credential 우회 차단 |
+| 2026-08-15 | 팩 목록의 `sealed_count`는 page item 집계가 아니라 계정 전체 미개봉 수로 반환 | 50개 pagination 이후에도 홈 배지와 카드깡 진입점이 실제 누적 수량을 표시하도록 보장 |
+| 2026-08-15 | v1은 무결제·무광고 추가기회·무교환가치라 구매형 랜덤 아이템과 제품상 구분하되, 개봉 전 80/20+5번째 보장을 자발적으로 공개. 향후 결제·광고·재화 결합 시 발급을 닫고 법률·스토어 재검토 | [Apple 3.1.1](https://developer.apple.com/app-store/review/guidelines/)·[Google Payments](https://support.google.com/googleplay/android-developer/answer/9858738?hl=en)의 `from purchase` 경계와 [국내 유상구매 정의](https://www.easylaw.go.kr/CSP/CnpClsMain.laf?ccfNo=1&cciNo=2&cnpClsNo=2&csmSeq=2858&menuType=onhunqna&popMenu=ov)를 보수적으로 반영 |

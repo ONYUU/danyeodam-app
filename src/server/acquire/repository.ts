@@ -7,6 +7,7 @@ import {
 } from "@/server/acquire/db-contract";
 import type {
   AcquireRepository,
+  BonusPackIssuanceScope,
   CommitResult,
   ContextResult,
 } from "@/server/acquire/types";
@@ -60,16 +61,18 @@ export class SupabaseAcquireRepository implements AcquireRepository {
     publicGateOpen: boolean;
     expectedSpotUpdatedAt: string;
     expectedUserId: string;
+    bonusPackIssuanceScope: BonusPackIssuanceScope;
   }): Promise<CommitResult> {
     const { data, error } = await getServiceClient()
       .schema("api_private")
-      .rpc("acquire_commit", {
+      .rpc("acquire_commit_v05", {
         p_auth_user_id: input.authUserId,
         p_spot_id: input.spotId,
         p_idempotency_key: input.idempotencyKey,
         p_public_gate_open: input.publicGateOpen,
         p_expected_spot_updated_at: input.expectedSpotUpdatedAt,
         p_expected_user_id: input.expectedUserId,
+        p_bonus_pack_issuance_scope: input.bonusPackIssuanceScope,
       });
 
     if (error !== null) {

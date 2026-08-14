@@ -1,10 +1,11 @@
-# API-CONTRACT v0.4.0 (구현 기준선 — 스토어 제출 준비)
+# API-CONTRACT v0.5.0 (구현 기준선 — 스토어 제출 준비)
 
 > 변경 규칙: Codex 검토 + TRUST 승인 후 버전 확정.
 > 이 문서가 FE·BE의 단일 기준이다. 구현이 계약과 다르면 구현이 버그다.
 
 ## 변경 이력
 
+- v0.5.0 (2026-08-15): 현장 일반카드와 방문 통계에 섞이지 않는 계정당 KST 일일 보너스 팩을 추가했다. 일반 80%·특별 20%, 4회 연속 일반 뒤 5번째 특별 보장, 발급 트랜잭션에서 결과 1회 확정, 미개봉 무기한 보관, 중복 수량 합산을 확정했다. acquire는 기존 응답을 유지하면서 신규 발급 또는 같은 성공의 재생에만 결과가 없는 sealed envelope를 선택적으로 추가한다. 팩 목록·상세·멱등 개봉·카드 수량함은 active adult 인증, 서버 귀속 서명 cursor, DB 고정 rate limit, strict body와 안전 projection을 사용한다. 특별 그림은 공개 카드 asset에서 제외하고 실제 개봉 소유자만 bearer 보호 asset으로 받는다. `BONUS_PACK_ISSUANCE_SCOPE=off|participants|public`은 신규 발급만 통제하며 기본값은 off다. 음악/BGM, 결제, 광고 추가기회, 거래, 분해, 재화 전환은 출시 범위에서 제외하고 특별 카드 자산은 권리·6개 언어·현장·출시 승인 전에는 발급하지 않는다
 - v0.4.0 (2026-08-12): 계정 삭제를 즉시 접근·공유 철회, 서명 URL 만료 후 Storage 2회 삭제, DB, Auth, 30일 비식별 영수증 순서의 무제한 재시도 state machine으로 구체화했다. 관리자는 활성 service identity와 현재 DB membership을 모두 재검증한 후에만 최대 100건의 비식별 운영 상태를 열람하고, 완료되지 않은 요청을 접근 복구 없이 즉시 재시도할 수 있다. 인증 API의 collection·acquire·events·기타 참여 쓰기·관리자 mutation은 호출자가 limit을 선택할 수 없는 DB 고정 목적의 사용자별 rolling 60초 제한으로 통일하고, 제한 소비와 실제 도메인 처리를 동일 DB 트랜잭션에 묶었다. 개인카드 사진 upload-url에 소유자 귀속 UUID 멱등 키를 추가하고, 개별 카드 삭제는 요청 트랜잭션의 공유 철회·행 삭제, Storage 2회 삭제, 삭제 대기 용량 charge, 30일 재시도 영수증으로 확정했다. 별도 Admin API로 만든 email/password Auth 사용자에 대해 service-role 전용 reviewer provision/reset/revoke lifecycle, 결정적 서울 6개 retro·샘플 개인카드·승인 공유 fixture, append-only 비식별 감사 원장과 Storage 보상 재시도를 추가했다
 - v0.3.9 (2026-08-12): 신원 기반 `18plus-v1` 최소연령 attestation과 4번째 current `location_terms`, 위치 수집 동의·일시중지·철회, 최소 위치 이용 원장·열람·정정, field 파생물과 Storage의 durable ledger·2단계 삭제·보유기간·5분 유지보수 경계를 추가했다. 위치 수집·resume·field 파생물은 adult-active와 current 위치동의를 요구하지만 기존 데이터 열람·정정·철회는 active identity만 요구한다. fixed 공개 차단은 publication 404를 먼저 적용한 뒤 bearer JWT의 adult-active DB projection을 검증하며 web age cookie를 요구하지 않고, 공개 web의 resolve·photo·report는 기존 `AGE_ATTESTATION_REQUIRED` cookie 경계를 유지한다
 - v0.3.8 (2026-08-12): 공유 secret을 URL path/query에서 제거해 소유자 링크를 `/share#SECRET`으로 고정하고, 공개 해석·WebP 사진·신고·차단을 secret이 strict JSON body에만 있는 fixed POST API로 전환했다. `/share`는 fragment를 메모리로 한 번 읽은 즉시 `/share`로 지우며 6개 browser locale UI를 제공한다. 공개 웹은 DOB를 기기에서만 판정·폐기하고 domain-separated HMAC의 30분 HttpOnly·Secure·SameSite=Strict 연령 attestation cookie를 요구한다
@@ -54,7 +55,7 @@ type LocalizedText = {
   vi: string;
 };
 ```
-- 시간: 서버는 `timestamptz`(UTC) 저장. 일자 단위 규칙인 현장 획득 일일 제한과 `revisit` 중복 제거만 Asia/Seoul 기준으로 서버 계산한다 (`acquired_on_kst`·`revisit_on_kst`)
+- 시간: 서버는 `timestamptz`(UTC) 저장. 일자 단위 규칙인 현장 획득 일일 제한, 일일 보너스 팩, `revisit` 중복 제거만 Asia/Seoul 기준으로 서버 계산한다 (`acquired_on_kst`·`issued_on_kst`·`revisit_on_kst`)
 - 오류 형식:
 
 ```json
@@ -73,7 +74,7 @@ type LocalizedText = {
 
 ### 안전 응답 projection (불변)
 
-어떤 응답에도 다음을 포함하지 않는다: `field_sequence`(순번), 비정상 이동 플래그, 스팟별 판정 임계값(반경·정확도), Storage 원본 경로, 내부 스키마 식별자. FE는 계약에 명시된 필드만 수신한다고 가정하고, BE는 명시 필드만 select-project한다.
+어떤 응답에도 다음을 포함하지 않는다: `field_sequence`(순번), 비정상 이동 플래그, 스팟별 판정 임계값(반경·정확도), Storage 원본 경로, 내부 스키마 식별자. 봉인 상태의 보너스 팩에는 `rarity`·`card`·`card_id`·`result`·보장 여부·보장 카운터·난수값을 포함하지 않는다. FE는 계약에 명시된 필드만 수신한다고 가정하고, BE는 명시 필드만 select-project한다.
 
 ### 비밀값 처리 (불변)
 
@@ -126,8 +127,14 @@ JWT·비밀번호·초대코드·복구코드·삭제 status token·share secret
 ```json
 { "acquisition": { "id", "spot_id", "card_id", "type": "field", "acquired_at" },
   "card": { "id", "title": {"ko","en","ja","zh-Hans","zh-Hant","vi"}, "image_url", "color_hex" },
-  "back": { "date_kst": "YYYY-MM-DD", "weather": "optional" } }
+  "back": { "date_kst": "YYYY-MM-DD", "weather": "optional" },
+  "bonus_pack": { "id", "status": "sealed", "issued_at", "date_kst": "YYYY-MM-DD" }
+}
 ```
+
+`bonus_pack`은 선택 필드다. 이 현장 획득이 그날의 계정 보너스 팩을 처음 발급했거나
+같은 성공 idempotency key를 재생한 경우에만 존재한다. 구버전 앱은 알 수 없는 이 필드를
+무시해 기존 일반카드 획득 의미를 그대로 유지한다.
 
 - 구현: Route Handler → 서버 역할 전용 원자적 PostgreSQL 함수. **함수 실행권한은 서버 역할로 한정** — 브라우저·`authenticated` 역할 직접 호출 불가
 - 판정 순서: 참여 자격 → 스팟 open → 정확도 임계 → 반경 → KST 1일 1회 → insert(순번 배정 포함)
@@ -141,6 +148,16 @@ JWT·비밀번호·초대코드·복구코드·삭제 status token·share secret
   - 성공·실패 terminal 전이는 하나만 승리하고 terminal fact와 정확히 상관된 서버 이벤트를 같은 트랜잭션에 저장한다. DB 기록/전송이 불명확하면 원래 실패로 추측 응답하지 않고 500으로 fail closed한다
 - `OUT_OF_RANGE`의 `details`: `{ "distance_band": "near|far" }` — 정확한 거리 미제공
 - `LOW_ACCURACY`의 `details`: `{ "retry": true }` — 임계값 수치 미노출
+- 유효 현장 방문은 항상 해당 장소의 일반카드 한 장을 지급한다. 같은 사용자·장소는 KST
+  하루 한 번이며 서로 다른 장소는 같은 날 각각 지급할 수 있다. 보너스 카드는 두 번째
+  `field` 획득으로 기록하지 않으며 방문·지역 성과 통계에도 합산하지 않는다
+- 그날 첫 유효 `field` 획득만 계정당 보너스 팩 한 개의 발급 자격이 된다. `retro`·`gift`는
+  자격이 아니며 과거 획득을 나중에 backfill하지 않는다. 같은 날 여러 성공 시도가 경합해도
+  팩은 정확히 하나이고, 같은 성공의 재시도는 동일 pack ID만 재현한다
+- 결과는 발급 트랜잭션에서 서버가 한 번 확정한다. 클라이언트는 카드·등급·난수·pool을
+  제출할 수 없고, 재시도·재설치·개봉 취소는 결과를 바꾸지 않는다. 목표 확률은 일반 80%,
+  특별 20%이며 일반이 4회 연속 확정되면 다음 5번째 팩은 특별이다. 특별 확정 시 연속
+  일반 카운터는 0으로 돌아가며 날짜가 바뀌어도 카운터는 유지된다
 
 ## 4. 내 컬렉션
 
@@ -165,6 +182,122 @@ JWT·비밀번호·초대코드·복구코드·삭제 status token·share secret
 - 응답에는 현재 사용자의 행만 포함하며 `field_sequence`, 비정상 이동 플래그, Storage 경로는 포함하지 않는다
 - 조회 함수는 현재 활성 identity를 `FOR SHARE`로 잠가 복구 claim·계정 삭제와 직렬화한다
 - `GET /api/personal-cards/:id/photo` (인증)는 소유권을 다시 확인한 뒤 private WebP를 프록시하며 `Cache-Control: private, no-store`를 사용한다. 미존재와 비소유는 모두 404다
+
+## 4A. 일일 보너스 팩과 카드함
+
+보너스 팩 API는 모두 active adult 인증을 요구한다. `BONUS_PACK_ISSUANCE_SCOPE=off`여도
+이미 발급된 팩의 목록·상세·개봉과 카드함은 계정 복구를 위해 계속 동작한다. 타인 소유와
+미존재 pack ID는 모두 404다.
+
+### 목록
+
+`GET /api/me/bonus-packs?limit=50&cursor=<opaque>` (인증)
+
+```json
+{
+  "items": [
+    { "id", "status": "sealed", "issued_at", "date_kst": "YYYY-MM-DD" },
+    { "id", "status": "opened", "issued_at", "date_kst": "YYYY-MM-DD", "opened_at",
+      "card": { "id", "rarity": "common|special", "title": "LocalizedText", "image_url", "color_hex" } }
+  ],
+  "sealed_count": 12,
+  "page": { "next_cursor": "string|null", "has_more": false }
+}
+```
+
+- `sealed_count`는 현재 page의 item 수가 아니라 현재 계정의 전체 미개봉 팩 수다. 0 이상의
+  안전한 정수이며 page 크기·cursor 위치와 무관하게 각 page 응답에서 함께 반환한다
+- `limit`은 1~100, 기본 50이다. 허용 query key는 `limit`·`cursor`뿐이다. 정렬은
+  `issued_at DESC, bonus_pack.id DESC`다
+- cursor는 현재 인증 사용자와 `bonus-packs` 도메인에 HMAC-SHA256으로 귀속된
+  불투명 `<payload>.<signature>`다. 형식·서명·버전·소유자가 잘못됐거나 카드함 cursor를
+  교차 사용하면 400 `VALIDATION_FAILED`다
+- sealed item은 위 네 필드만 허용한다. DB 결과에 카드·등급·결과·보장 관련 필드가
+  하나라도 섞이면 서버는 이를 제거해 추측 응답하지 않고 500으로 fail closed한다
+
+### 상세와 개봉
+
+`GET /api/me/bonus-packs/:id` (인증) → 200
+
+```json
+{ "bonus_pack": { "id", "status": "sealed", "issued_at", "date_kst": "YYYY-MM-DD" } }
+```
+
+열린 팩이면 목록과 동일한 `opened` projection을 반환한다.
+
+`POST /api/me/bonus-packs/:id/open` (인증)
+
+```json
+{ "client_request_id": "canonical lowercase uuid-v4" }
+```
+
+→ 200 `{ "bonus_pack": <opened projection> }`
+
+- JSON body는 위 한 필드만 허용하며 최대 4 KiB다. `card_id`·`rarity`·결과 선택값을
+  추가하면 400 `VALIDATION_FAILED`다
+- 최초 개봉은 발급 때 저장된 결과를 공개하고 `opened_at`을 확정할 뿐 추첨하지 않는다.
+  같은 팩의 같은 요청·다른 신규 요청·동시 요청은 모두 같은 opened 결과로 수렴한다
+- 최초 개봉 전이에 기록된 `client_request_id`를 다른 팩 또는 다른 의미에 재사용하면
+  409 `IDEMPOTENCY_CONFLICT`다. 이미 열린 팩에 이후 새 요청 ID로 다시 접근하는 경우에는
+  새 원장 행을 만들지 않고 저장된 같은 결과를 반환한다. 공개 응답에는 보장 여부·내부
+  보장 카운터·난수값을 넣지 않는다
+- 팩은 만료되지 않으며 open 결과도 변경되지 않는다. BGM·음악은 없고 앱은 사용자의
+  모션 감소 설정을 존중하는 시각 효과와 선택적 햅틱만 사용할 수 있다
+
+### 특별 카드 그림
+
+opened projection의 `image_url`은 등급별로 다르다.
+
+- 일반: `/api/card-assets/:cardId`. 기존 공개 일반카드 asset route를 사용한다
+- 특별: `/api/me/special-card-assets/:cardId`. 앱은 현재 bearer JWT를
+  `Authorization` 헤더로 보내야 한다. 서버는 active adult를 확인한 뒤 DB에서 해당
+  사용자가 그 특별 카드를 실제로 개봉해 보유하는지 다시 확인하고 전용 private
+  `special-card-assets` bucket 객체를 `Cache-Control: private, no-store`로 스트리밍한다.
+  일반카드용 public `card-assets` bucket에 특별 카드 원본을 저장하지 않는다
+- 특별 카드의 미보유·미개봉·타인 소유·미게시·미승인 상태는 모두 404다. 기존 공개
+  `/api/card-assets/:cardId`는 UUID를 알아도 특별 카드를 반환하지 않는다. 응답과 로그에는
+  Storage path·JWT·사용자 ID를 포함하지 않는다
+
+### 수량 카드함
+
+`GET /api/me/card-inventory?limit=50&cursor=<opaque>` (인증)
+
+```json
+{
+  "items": [{
+    "card": { "id", "rarity": "common|special", "title": "LocalizedText", "image_url", "color_hex" },
+    "quantity": 1,
+    "first_acquired_at": "ISO8601",
+    "last_acquired_at": "ISO8601"
+  }],
+  "page": { "next_cursor": "string|null", "has_more": false }
+}
+```
+
+- 방문·소급·선물 일반카드와 개봉 완료된 보너스 결과를 card ID별 수량으로 합친다.
+  미개봉 결과는 카드함에 포함하지 않아 등급을 간접 노출하지 않는다. 중복 카드는 새 칸,
+  거래·분해·재화로 만들지 않고 `quantity`만 증가한다
+- 정렬은 `last_acquired_at DESC, card.id DESC`다. cursor는 현재 인증 사용자와
+  `card-inventory` 도메인에 별도 서명해 보너스 팩 목록 cursor와 교차 사용할 수 없다
+- 카드함은 소유 수량 화면이고 `/api/me/collection`은 장소별 방문 기록이다. 카드함 조회나
+  보너스 개봉은 `field` 방문·스팟 수·B2B/B2G 성과 통계를 바꾸지 않는다
+
+### 확률 공개 정책 메모
+
+- [Apple App Review Guidelines 3.1.1](https://developer.apple.com/app-store/review/guidelines/)과
+  [Google Play Payments 정책](https://support.google.com/googleplay/android-developer/answer/9858738?hl=en)은
+  각각 구매로 제공되는 무작위 가상 아이템의 확률을 구매 전에 공개하도록 규정한다
+- 대한민국 「게임산업진흥에 관한 법률」의 확률형 아이템 정의는 이용자가 직접·간접으로
+  유상 구매하는 게임아이템과 유상·무상 아이템 결합을 포함한다.
+  [찾기쉬운 생활법령정보](https://www.easylaw.go.kr/CSP/CnpClsMain.laf?ccfNo=1&cciNo=2&cnpClsNo=2&csmSeq=2858&menuType=onhunqna&popMenu=ov)의
+  2026-06-15 기준 설명을 출시 전 다시 확인한다
+- v1은 결제·광고 시청 추가기회·유상 재화 결합·거래·현금화가 없어 구매형 구조와
+  제품상 구분된다. 이는 법률 적용 제외를 확정하는 표현이 아니다. 신뢰와 향후 변경 방지를
+  위해 앱은 무료 여부와 관계없이 개봉 전에 `일반 80%·특별 20%·4회 연속 일반 뒤
+  5번째 특별 보장`을 명확히 표시한다
+- 결제, 광고 보상, 유상·무상 재화 결합, 양도·교환가치 중 하나라도 추가하려면 신규 발급
+  scope를 다시 `off`로 닫고 국내 법률·등급분류·Apple·Google 정책을 재검토한 뒤 별도
+  계약 버전과 사람 승인을 받아야 한다
 
 ## 5. 개인화 카드
 
@@ -472,6 +605,10 @@ X-Deletion-Status-Token: <status_token>
 - 공개 요청 식별자는 신뢰 가능한 플랫폼 제공 IP를 서버 비밀키로 `HMAC(secret, fixed-purpose-domain + ip)` 처리한다. 날짜를 입력에 넣지 않아 UTC 자정 전후에도 같은 1시간 window를 사용하고, 용도별 고정 domain으로 다른 제한 키와 분리한다. 일반 클라이언트 `X-Forwarded-For`를 신뢰하지 않는다. 원시 IP·User-Agent 전체 문자열·공유 slug는 rate-limit 원장이나 분석 이벤트에 저장하지 않으며 HMAC rate 행은 마지막 요청 후 48시간 안에 삭제한다
 - 기본 공개 제한: spots IP당 120회/분, fixed 공유 resolve·사진 프록시 IP당 각각 60회/분 및 개인카드당 합산 600회/10분, 신고 IP당 5회/시간
 - 기본 인증 제한: collection 사용자당 60회/분, acquire 10회/분, events 12배치/분, 그 밖의 참여 쓰기 30회/분
+- 보너스 팩 목록·상세·카드함·보유 특별 그림은 `collection_read` 60회/분을 공유하고, 개봉은
+  `participant_write` 30회/분을 사용한다. 개봉 자체는 신규 참여자 gate를 요구하지 않으며
+  scope가 닫힌 뒤에도 기존 팩 복구를 허용한다. 발급은 acquire의 10회/분 트랜잭션 안에서만
+  수행하므로 독립 rate window를 추가 소비하지 않는다
 - 인증 제한은 bearer 검증과 body/query 형식 검증을 통과한 API attempt가 첫 보호 도메인 RPC를 호출할 때 한 번 소비한다. 형식이 잘못된 body/query는 보호 RPC에 도달하지 않으므로 소비하지 않는다. DB wrapper는 Auth UID의 활성 논리 사용자를 잠그고 사용자 단위로 직렬화한 뒤 제한 소비와 실제 조회·mutation을 같은 트랜잭션에서 수행하며, `collection_read|acquire|event_batch|participant_write|admin_mutation`의 고정 목적만 허용한다. 제한 상태에는 논리 사용자 ID·고정 목적·최근 60초 timestamp 최대 60개만 두며 bearer token·IP·User-Agent·request body·멱등 키를 저장하지 않는다
 - acquire의 설정 재조회·성공/실패 확정, 공유 slug 충돌 재시도, 개인카드 승격의 Storage 처리 후 확정처럼 한 API attempt가 여러 DB 트랜잭션을 사용하는 경우 첫 RPC가 반환한 server-only 논리 사용자 ID를 후속 RPC가 현재 활성 identity와 같은 트랜잭션에서 다시 잠그고 비교한다. 복구로 Auth UID가 다른 논리 사용자에게 재결합되면 후속 처리는 `UNAUTHORIZED`로 끝나며 새 사용자 데이터나 제한 용량을 변경하지 않는다. 이 ID는 공개 HTTP 응답·오류 details·로그에 포함하지 않고, 같은 attempt의 continuation은 제한을 다시 소비하지 않는다
 - `participant_write` 30회/분은 개인카드 승격·공유 제출·실물 요청이 한 창을 공유한다. upload-url은 더 엄격한 DB quota인 10회/시간·20회/24시간을 이미 소비하므로 이 1분 창을 이중 소비하지 않는다. 참여코드 등록·복구·정책/최소연령/위치동의·privacy rights·계정삭제 사용자 요청/상태·collection 외 읽기는 각 전용 제한 또는 명시된 무제한 경계를 유지한다
@@ -584,6 +721,9 @@ X-Deletion-Status-Token: <status_token>
 - 삭제: `app_users.deletion_requested_at`, `private.account_deletion_jobs`, Auth UID·Storage 객체 manifest, 단기 비식별 receipt
 - UGC: `personal_cards.share_state(private|pending|active|rejected|taken_down)`와 reviewer UID 또는 redaction marker 중 정확히 하나인 검수 표식, 제출 당시 terms/community acceptance FK, immutable `policy_documents`·locale별 문서 URL/hash, `policy_acceptances`, `user_blocks`·멱등 action 원장, `content_reports`, `public_report_rate_limits`, `moderation_actions`, opaque ID 기반 `share_owner_suspensions`
 - 심사: `private.reviewer_accounts`, 결정적 template `private.reviewer_fixture_templates`, 활성 fixture inventory `private.reviewer_fixture_items`, 비식별 append-only lifecycle 감사 `private.reviewer_access_actions`
+- 일일 팩: 방문 원장과 분리된 `private` 발급·자격·멱등 개봉·보장 상태·versioned pool,
+  열린 결과와 방문 일반카드를 합산한 서버 전용 카드함 projection. 보너스 원장은
+  `acquisitions`·방문 통계·분석 성과를 증가시키지 않는다
 - 남용·운영: `private.rate_limit_windows`(논리 사용자·고정 purpose별 최근 60초 timestamp 최대 60개), 시간대별 landing/share rollup, `private.maintenance_runs`
 
 모든 신규 앱 테이블은 RLS와 `FORCE ROW LEVEL SECURITY`를 적용한다. `anon`·`authenticated`에 직접 테이블 쓰기 권한을 주지 않는다. 신규 RPC는 `api_private`, `SECURITY DEFINER`, 빈 `search_path`, 완전한 schema-qualified 이름을 사용하고 `PUBLIC`·`anon`·`authenticated` 실행권한을 회수해 `service_role`만 실행한다. 삭제 요청과 공유 철회는 게이트 폐쇄·정지 상태에서도 항상 허용한다.
@@ -593,6 +733,12 @@ X-Deletion-Status-Token: <status_token>
 - `PUBLIC_RECRUIT_GATE` (기본 false): 위치정보법 검토 완료 + TRUST 승인 전 true 금지. false 동안 참여 쓰기 API는 초대코드 자격 필수 (0장 참여 게이트 참조)
 - `PUBLIC_SHARE_CREATION` (기본 false): 새 pending secret 생성과 policy snapshot 갱신 재제출을 통제한다. 실제 정책 문서와 pending 검수 운영이 준비된 내부 pilot에서만 별도 승인으로 열 수 있다. 기존 소유자의 상태 조회·상태 변경 없는 멱등 반환·철회는 flag와 무관하다
 - `PUBLIC_SHARE_PUBLICATION` (기본 false): admin `approve|reinstate`, active 공개 JSON·사진·신고·차단을 함께 통제한다. false이면 승인·재게시는 403 `GATE_CLOSED(details.gate=share_publication)`, public surface는 404다. fragment/fixed POST 회귀, native minimum-age 차단 정합, 실제 신고·차단·삭제·지원 운영, production 로그 검증과 TRUST 승인이 끝나기 전에는 true 금지다
+- `BONUS_PACK_ISSUANCE_SCOPE` (기본 `off`): `off`는 신규 팩을 발급하지 않고 기존 팩의
+  조회·개봉만 유지한다. `participants`는 현재 `private.participant_access`가 있는 사용자,
+  `public`은 유효 acquire 사용자에게 발급한다. 특별 자산의 권리·6개 언어·현장·출시 승인,
+  versioned pool 완전성, 확률·보장·동시성 검증이 모두 끝나기 전에는 `off`를 유지한다.
+  `BONUS_PACK_CURSOR_SECRET`은 32자 이상 서버 Secret이며 `NEXT_PUBLIC_` 변수나 앱 번들에
+  넣지 않는다
 
 ### v0.2.3 → v0.3.8 공유 전환
 
@@ -606,12 +752,13 @@ X-Deletion-Status-Token: <status_token>
 
 ## 14. 구현·제출 전 검증 순서
 
-1. 다국어 스키마와 `GET /api/spots`, `GET /api/me/collection`, 소유 사진 프록시, acquire 응답·공개 share의 6개 언어 전환, raw share slug 이벤트 제거
+1. 다국어 스키마와 `GET /api/spots`, `GET /api/me/collection`, 보너스 팩·카드함,
+   소유 사진 프록시, acquire 응답·공개 share의 6개 언어 전환, raw share slug 이벤트 제거
 2. rate limit·quota·반복 cleanup·maintenance 상태
 3. 계정 및 전체 데이터 삭제와 공개 웹 삭제 경로
 4. 정책 동의·공유 사전 검수·신고·로컬 숨김·개별 삭제·운영자 조치
 5. reviewer lifecycle 로컬 회귀와 Apple·Google 원격 계정 provision·실제 후보 빌드 canary
-6. 현장 검증된 서울 6개 스팟·6개 언어·카드 자산·정책 문서
+6. 현장 검증된 서울 6개 스팟·6개 언어·일반/특별 카드 자산·보너스 확률 고지·정책 문서
 
 각 단계는 `db reset`, pgTAP, DB lint/advisors, API 단위·통합·동시성 E2E를 통과해야 한다. 로그·DB·분석·오류 추적에 사용자 원시 좌표·raw IP·raw share slug가 없고, 삭제 요청 직후 기존 JWT가 모든 보호 API에서 401인지 별도 검증한다.
 

@@ -27,6 +27,7 @@ export async function POST(request: Request): Promise<Response> {
       {
         authUserId,
         publicGateOpen: isPublicRecruitmentOpen(environment.PUBLIC_RECRUIT_GATE),
+        bonusPackIssuanceScope: environment.BONUS_PACK_ISSUANCE_SCOPE,
       },
       {
         repository,

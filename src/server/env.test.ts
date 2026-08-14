@@ -28,6 +28,42 @@ describe("public share publication flag", () => {
   });
 });
 
+describe("bonus pack issuance scope", () => {
+  const stubBase = () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-key");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service-key");
+    vi.stubEnv("AUTH_EMAIL_REDIRECT_TO", "danyeodam://auth/callback");
+  };
+
+  it("defaults a blank deployment value to off", async () => {
+    stubBase();
+    vi.stubEnv("BONUS_PACK_ISSUANCE_SCOPE", "");
+    vi.resetModules();
+    const environmentModule = await import("@/server/env");
+    expect(environmentModule.getServerEnvironment().BONUS_PACK_ISSUANCE_SCOPE).toBe("off");
+  });
+
+  it.each(["off", "participants", "public"] as const)(
+    "accepts the exact server-only scope %s",
+    async (scope) => {
+      stubBase();
+      vi.stubEnv("BONUS_PACK_ISSUANCE_SCOPE", scope);
+      vi.resetModules();
+      const environmentModule = await import("@/server/env");
+      expect(environmentModule.getServerEnvironment().BONUS_PACK_ISSUANCE_SCOPE).toBe(scope);
+    },
+  );
+
+  it("rejects an unknown scope instead of opening issuance", async () => {
+    stubBase();
+    vi.stubEnv("BONUS_PACK_ISSUANCE_SCOPE", "true");
+    vi.resetModules();
+    const environmentModule = await import("@/server/env");
+    expect(() => environmentModule.getServerEnvironment()).toThrow();
+  });
+});
+
 describe("account deletion deployment environment", () => {
   const stubRequiredBase = () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project.supabase.co");
@@ -39,6 +75,7 @@ describe("account deletion deployment environment", () => {
     vi.stubEnv("PUBLIC_SUPPORT_URL", "https://support.example/help");
     vi.stubEnv("ACCOUNT_DELETION_DEVELOPER_NAME", "DANYEODAM");
     vi.stubEnv("CRON_SECRET", "c".repeat(32));
+    vi.stubEnv("BONUS_PACK_CURSOR_SECRET", "b".repeat(32));
   };
 
   it("fails production startup when the canonical public deletion origin is missing", async () => {

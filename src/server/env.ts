@@ -60,6 +60,11 @@ const serverEnvironmentSchema = z.object({
   PUBLIC_RECRUIT_GATE: z.string().optional(),
   PUBLIC_SHARE_CREATION: z.string().optional(),
   PUBLIC_SHARE_PUBLICATION: z.string().optional(),
+  BONUS_PACK_ISSUANCE_SCOPE: z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.enum(["off", "participants", "public"]).optional().default("off"),
+  ),
+  BONUS_PACK_CURSOR_SECRET: optionalEnvironmentString(z.string().min(32)),
   PUBLIC_APP_URL: optionalEnvironmentString(publicAppUrlSchema),
   COLLECTION_CURSOR_SECRET: optionalEnvironmentString(z.string().min(32)),
   LOCATION_COMPLIANCE_CURSOR_SECRET: optionalEnvironmentString(z.string().min(32)),
@@ -78,20 +83,21 @@ const serverEnvironmentSchema = z.object({
     && environment.VERCEL_ENV !== "production"
   ) return;
 
-  const requiredAccountDeletionKeys = [
+  const requiredProductionKeys = [
     "ACCOUNT_DELETION_RATE_LIMIT_SECRET",
     "ACCOUNT_DELETION_SUPPORT_URL",
     "PUBLIC_SUPPORT_URL",
     "ACCOUNT_DELETION_DEVELOPER_NAME",
     "PUBLIC_APP_URL",
     "CRON_SECRET",
+    "BONUS_PACK_CURSOR_SECRET",
   ] as const;
-  for (const key of requiredAccountDeletionKeys) {
+  for (const key of requiredProductionKeys) {
     if (environment[key] === undefined) {
       context.addIssue({
         code: "custom",
         path: [key],
-        message: `${key} is required for the production account-deletion SLA`,
+        message: `${key} is required for preview and production deployments`,
       });
     }
   }

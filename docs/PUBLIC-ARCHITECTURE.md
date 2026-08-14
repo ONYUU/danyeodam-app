@@ -17,6 +17,13 @@
 
 비공개 자료는 별도 접근통제 저장소와 배포 플랫폼 Secret에서 관리한다. 기존 비공개 Git
 이력은 이 저장소에 복제하지 않으며, 공개 저장소는 검증된 단일 스냅샷에서 시작한다.
+일일 보너스 팩의 신규 발급 scope와 사용자 귀속 pagination 서명키는 각각
+`BONUS_PACK_ISSUANCE_SCOPE`·`BONUS_PACK_CURSOR_SECRET` 서버 환경변수로만 주입한다.
+특별 카드의 승인 전 원본·참조 보드·권리자료는 공개 저장소에 두지 않는다.
+승인 후 운영 자산도 공개 일반카드 endpoint와 분리하며, 앱 사용자는 active adult 인증과
+실제 개봉 소유권을 다시 확인하는 `/api/me/special-card-assets/:cardId`로만 받는다. 특별
+카드 원본은 일반카드용 public bucket과 분리한 전용 private `special-card-assets` bucket에만
+보관하고, 서버는 Storage redirect를 따르지 않아 service credential 전달을 차단한다.
 
 ## 출시 경계
 
