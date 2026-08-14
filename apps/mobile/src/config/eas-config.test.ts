@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 interface EasProfile {
   corepack?: boolean;
+  distribution?: string;
   node?: string;
 }
 
@@ -43,5 +44,12 @@ describe('EAS toolchain policy', () => {
       expect(profile.node).toBe('24.19.0');
       expect(profile.corepack).toBe(true);
     }
+  });
+
+  it('keeps every non-production profile on internal distribution', () => {
+    for (const profileName of ['development', 'e2e', 'preview']) {
+      expect(easConfig.build[profileName]?.distribution).toBe('internal');
+    }
+    expect(easConfig.build.production?.distribution).toBeUndefined();
   });
 });

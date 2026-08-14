@@ -5,7 +5,7 @@ App Store와 Google Play 제출을 목표로 하는 Expo React Native 앱입니�
 ## 기준 버전
 
 - Node.js `24.19.0`
-- Expo SDK `~57.0.12`
+- Expo SDK `~57.0.13`
 - React Native `0.86.2`
 - React `19.2.3`
 - TypeScript `~6.0.3`
@@ -43,25 +43,27 @@ bundle 각각에 실제로 포함되는지도 확인합니다.
 
 ## production 후보 빌드
 
-권리·출시 담당자의 사람 승인까지 manifest에 반영한 exact commit에서만 다음 정식
-경로를 사용합니다.
+다음 명령은 공개 소스의 코드·모바일 설정을 검증하고 production EAS 빌드를 요청합니다.
 
 ```bash
 npm run release:preflight
 npm run release:build
 ```
 
-`release:preflight`는 카드 manifest/생성 이력 변조 테스트, 실제 파일 해시, 자동
-검수·사람의 권리·출시 승인, 서울 6곳의 현장 GPS·관리주체·6개 언어 승인,
-빌드 전 스토어 제출 패킷(번역, URL, 심사 계정, 권리·연령·콘솔 선언 준비)을
-모두 요구한 뒤 모바일 전체 검증을 실행합니다. 아직
-생성되지 않은 IPA/AAB, dSYM, native symbols는 이 단계에서 요구하지 않습니다.
-서명 산출물은 빌드가 끝난 후 저장소 루트의 `store:finalize-submission-artifacts`와
-`store:validate-submission-packet:final`로 별도 검증합니다.
-`release:build`도 같은 preflight를 선행한 후 고정된 EAS CLI와 `production` 프로필로
-iOS·Android 산출물을 요청합니다. 사람 승인이 `pending`이면 두 명령은 실패하는 것이
-정상입니다. GitHub Actions의 `Release preflight` 수동 실행도 동일한 출시 차단 검사를
-수행합니다. 문서화된 production 산출물 경로에서 이 단계를 생략하지 않습니다.
+`release:preflight`는 공개 저장소 보안검사와 웹·API·모바일 테스트, 타입검사, 린트,
+production 설정을 확인합니다. 이 성공은 카드 권리, 서울 현장검증, 번역, 심사계정,
+스토어 선언 또는 서명 산출물의 승인을 의미하지 않습니다.
+
+`release:build`의 EAS production 단계는 저장소 밖에서 주입한
+`DANYEODAM_RELEASE_APPROVAL_FILE`을 추가로 검사합니다. 승인파일은 정확한 빌드 Git SHA와
+비공개 카드 권리·현장·스토어 사전검증 산출물의 SHA-256을 포함해야 하며, 누락·불일치 시
+빌드를 중단합니다. 형식과 보안 경계는
+[`docs/PRIVATE-RELEASE-ATTESTATION.md`](../../docs/PRIVATE-RELEASE-ATTESTATION.md)에 정리돼
+있습니다. 서명 IPA/AAB와 심볼의 최종 검사는 비공개 출시 파이프라인에서 수행하며,
+해당 자료와 도구는 이 공개 저장소에 포함하지 않습니다.
+
+GitHub Actions의 `Public code release preflight` 수동 실행도 공개 코드만 검증합니다.
+따라서 그 workflow의 성공을 스토어 제출 승인으로 사용하면 안 됩니다.
 
 ## 빌드 프로필
 
@@ -134,7 +136,7 @@ iOS·Android 산출물을 요청합니다. 사람 승인이 `pending`이면 두 
 
 ## 의존성 보안 추적
 
-2026-08-12 기준 고정 lockfile에 대해 `npm audit --omit=dev`는 Expo·React Native 빌드 툴체인의 전이 의존성에서 moderate 8건, high 14건을 보고합니다. 현재 자동 수정 제안은 Expo SDK 57을 53으로, React Native 0.86을 0.72로 내리는 비호환 변경이므로 적용하지 않습니다.
+2026-08-15 기준 고정 lockfile에 대해 `npm audit --omit=dev`는 Expo·React Native 빌드 툴체인의 전이 의존성에서 moderate 8건, high 14건을 보고합니다. 현재 자동 수정 제안은 Expo SDK 57을 53으로, React Native 0.86을 0.72로 내리는 비호환 변경이므로 적용하지 않습니다.
 
 - 매 Expo SDK 57 패치 릴리스와 월 1회 정기 점검 시 `npm audit --omit=dev` 및 Expo Doctor를 재실행합니다.
 - 호환되는 upstream 패치가 나오면 lockfile을 갱신하고 전체 native config·export 검증을 다시 수행합니다.
