@@ -10,7 +10,8 @@
 > fragment·fixed POST 공개 전송과 web 연령 gate, v0.3.9 신원 기반 최소연령·
 > 위치 준수 원장/권리행사/삭제·field object ledger, v0.4.0 전체 계정삭제
 > state machine·공개 status·관리자 운영·개인카드 upload/storage quota·upload
-> 멱등 reservation·개별 카드 2-pass 삭제와 reviewer fixture lifecycle을 누적
+> 멱등 reservation·개별 카드 2-pass 삭제와 reviewer fixture lifecycle,
+> v0.5 비공개 보너스 카드팩 원장을 누적
 > 전진 마이그레이션으로 정의한다. 이 문서는 저장소 구현 계약이며
 > 원격 DB 적용·production 운영 완료를 뜻하지 않는다. 기준은 이 문서와 마이그레이션이다.
 
@@ -205,8 +206,13 @@ private.user_identities ── N:1 ── public.app_users
 | `get_owned_personal_card_photo` | 활성 소유자의 개인카드 사진 경로만 서버에 반환 |
 | `acquire_context` | 활성 바인딩·게이트·멱등성·스팟·카드 확인 후 POI 판정 문맥 반환 |
 | `acquire_commit` | 판정 문맥 재확인, KST 일일 제한, 순번·획득·성공 이벤트 원자 저장 |
+| `acquire_commit_v05` | 기존 현장 획득을 보존하며 서버 scope이 열린 당일 첫 field에만 sealed 보너스 팩을 원자 연결 |
 | `record_acquire_failure` | 좌표 없이 제한된 5개 실패 코드만 서버 이벤트로 저장 |
 | `get_published_card_asset` | 공개 중인 open 스팟 카드의 Storage 경로를 서버에만 반환 |
+| `list_bonus_packs` / `get_bonus_pack` | 활성 성인 소유자의 sealed/opened 팩 목록·상세 반환 |
+| `open_bonus_pack` | 발급 시 고정된 결과를 멱등 reveal하고 팩당 최초 open request 1건만 보존 |
+| `list_card_inventory` | 합법적 비-special 획득과 opened 보너스 결과를 카드별 수량으로 파생 집계 |
+| `get_owned_special_card_asset` | opened special 소유자에게만 고정 private bucket·경로 반환 |
 | `issue_participant_invites` | 현재 `admin_members` 자격으로 해시만 있는 1회용 초대코드 발급 |
 | `redeem_participant_invite` | 초대코드 원자 소모와 참여 자격 부여, 5회/15분 잠금 |
 | `issue_recovery_code` | 획득 1건 이상 비-reviewer 사용자의 이전 활성 digest 철회 후 신규 digest 발급 |
@@ -375,6 +381,29 @@ KST 일일 순서로 트랜잭션 advisory lock을 잡고 카드 카운터 행�
 - 이미 획득된 카드의 자산은 이후 스팟 중지·카드 비공개 상태에서도
   `get_published_card_asset`이 반환하여 재현 응답의 이미지를 유지한다.
 
+### 보너스 카드팩 v1
+
+- `public.acquisitions`는 방문 통계의 기존 원장이다. 일반 장소 카드는 계속
+  이 원장에 남고, 보너스 팩·결과·qualifier는 통계와 분리된
+  `private.bonus_*`에만 저장한다.
+- 논리 사용자·KST 일자당 `field_daily` 팩은 최대 1개다. 같은 날의 추가
+  field는 같은 팩에 연결하고 `retro`·`gift`는 발급하지 않는다. 마이그레이션은
+  과거 획득을 소급 발급하지 않는다.
+- 지역별 active versioned pool에서 일반 80% / 특별 20%를 적용한다. 연속
+  일반 4개 뒤 5번째는 special을 보장하며, special 후보는 해당 지역 pool의
+  미소유 카드를 먼저 선택한다. 일반↔`region`, 특별↔`special`을 정확히
+  대응시켜 `limited`가 일반 pool에 섞이지 않도록 한다.
+- rarity와 후보 index는 서버 CSPRNG rejection sampling으로 선택하고,
+  field 발급 트랜잭션에서 결과를 즉시 고정한다. 개봉은 이 결과를
+  reveal할 뿐 재추첨하지 않는다. sealed 팩은 만료되지 않고, 중복 수량은
+  원장에서 파생 계산한다.
+- 서버 issuance scope은 기본 `off`이다. `participants`는 활성 참여자,
+  `public`은 유효한 field에 한해 발급하며, scope를 닫아도 이미 발급된 팩의
+  목록·개봉·멱등 재시도는 유지한다.
+- issuer 획득을 정정·삭제해도 남은 당일 qualifier 중 하나를 원자 승격한다.
+  마지막 qualifier가 삭제되면 위치 파생 팩도 제거하고, 전체 계정삭제는
+  관련 private 원장을 cascade 정리한다.
+
 ## 5. 권한·RLS 행렬
 
 | 직접 테이블 접근 | `anon` | `authenticated` | 서버 전용 역할 |
@@ -385,6 +414,7 @@ KST 일일 순서로 트랜잭션 advisory lock을 잡고 카드 카운터 행�
 | `acquisitions` | 없음 | 없음 | 보안정의 RPC 경유 |
 | `personal_cards` | 없음 | 없음 | 보안정의 RPC 경유 |
 | `physical_requests` | 없음 | 없음 | 보안정의 RPC 경유 |
+| 보너스 pool·pack·qualifier·open request `private.*` | 없음 | 없음 | service-role RPC 경유 |
 | 정책·신고·검수 `private.*`, `analytics.*` | 없음 | 테이블 접근 없음 | 보안정의 RPC 경유 |
 
 Stage 0의 공개·본인 데이터도 계약에 정의된 `/api` Route Handler를 통해서만
@@ -408,8 +438,15 @@ RLS 정책은 직접 권한이 잘못 추가되더라도 행 소유권을 제한
 - `personal-cards`: 서버가 매직 바이트·크기·디코딩을 검증하고 재인코딩한
   파생본만 저장하는 비공개 영구 버킷.
 - `card-assets`: 공개 일러스트 콘텐츠 버킷. API는 Storage 경로 대신
-  `/api/card-assets/:card_id`를 노출하고 서버가 자산을 스트리밍한다.
-- 브라우저 쓰기 Storage 정책은 없다. 서명 URL 발급·승격·정리는
+  `/api/card-assets/:card_id`를 노출하고 서버가 자산을 스트리밍한다. special은
+  이 public RPC에서 항상 404다.
+- `special-card-assets`: special 원본만 두는 비공개 10 MiB 버킷. 브라우저
+  직접 읽기·쓰기는 restrictive RLS로 거부하고, opened 결과 소유자를
+  `get_owned_special_card_asset`이 재확인한 뒤에만 서버가 다운로드한다.
+- Storage 객체와 `cards.sketch_path`의 생성·발행은 경로별 트랜잭션
+  advisory lock으로 직렬화해 동시 업로드 write-skew를 차단한다. 게시된
+  special 원본과 published pool snapshot은 직접 수정·삭제할 수 없다.
+- 일반 브라우저 쓰기 Storage 정책은 없다. 서명 URL 발급·승격·정리는
   `service_role`를 사용하는 Route Handler가 담당한다.
 - `personal_cards.photo_path`는 해당 논리 사용자 ID 폴더로 시작해야 한다.
 - 클라이언트 EXIF 제거·리사이즈는 최적화이며, 보안 경계는 서버 재인코딩이다.

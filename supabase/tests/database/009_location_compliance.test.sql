@@ -349,6 +349,74 @@ update public.spots
 set status = 'open'
 where id = 'b8000000-0000-4000-8000-000000000001';
 
+insert into storage.objects (bucket_id, name, owner, version)
+values (
+  'special-card-assets',
+  'location-withdrawal/bonus-special.webp',
+  null,
+  'location-withdrawal-bonus-special-v1'
+);
+
+insert into public.cards (
+  id, spot_id, code, kind, title_ko, title_en, sketch_path, color_hex,
+  is_published, published_at
+) values (
+  'c8100000-0000-4000-8000-000000000001',
+  'b8000000-0000-4000-8000-000000000001',
+  'location-withdrawal-bonus-special',
+  'special',
+  '위치 철회 특별',
+  'Location Withdrawal Special',
+  'location-withdrawal/bonus-special.webp',
+  '#8866AA',
+  false,
+  null
+);
+
+insert into public.card_translations (
+  card_id, locale, title, status, approved_at, approved_by
+)
+select
+  'c8100000-0000-4000-8000-000000000001',
+  locale_row.locale,
+  'Location Withdrawal Special',
+  'approved',
+  now(),
+  'a8000000-0000-4000-8000-000000000001'
+from unnest(enum_range(null::public.content_locale)) as locale_row(locale);
+
+update public.cards
+set is_published = true, published_at = now()
+where id = 'c8100000-0000-4000-8000-000000000001';
+
+insert into private.bonus_pack_pool_versions (
+  id, region_code, version_code
+) values (
+  'c8200000-0000-4000-8000-000000000001',
+  'location-test',
+  'location-withdrawal-v1'
+);
+
+insert into private.bonus_pack_pool_cards (
+  pool_version_id, card_id, rarity, sort_order
+) values
+  (
+    'c8200000-0000-4000-8000-000000000001',
+    'c8000000-0000-4000-8000-000000000001',
+    'common',
+    1
+  ),
+  (
+    'c8200000-0000-4000-8000-000000000001',
+    'c8100000-0000-4000-8000-000000000001',
+    'special',
+    1
+  );
+
+update private.bonus_pack_pool_versions
+set published_at = clock_timestamp()
+where id = 'c8200000-0000-4000-8000-000000000001';
+
 -- Four current policies must each have all six locale documents. --------
 
 insert into private.policy_documents (
@@ -1885,6 +1953,50 @@ from public.acquisitions
 where user_id = (select user_id from location_test_users where fixture_name = 'owner')
   and idempotency_key = 'e8200000-0000-4000-8000-000000000001';
 
+insert into private.bonus_packs (
+  id, user_id, issuance_kind, issued_on_kst, pool_version_id,
+  result_card_id, result_rarity, rarity_roll, selection_roll,
+  guarantee_applied, state, issued_at
+)
+select
+  'e8250000-0000-4000-8000-000000000001',
+  fixture.user_id,
+  'field_daily',
+  acquisition_row.acquired_on_kst,
+  'c8200000-0000-4000-8000-000000000001',
+  'c8000000-0000-4000-8000-000000000001',
+  'common',
+  1,
+  0,
+  false,
+  'sealed',
+  clock_timestamp()
+from location_test_users as fixture
+join public.acquisitions as acquisition_row
+  on acquisition_row.id = (select id from owner_field_acquisition)
+where fixture.fixture_name = 'owner';
+
+insert into private.bonus_pack_qualifiers (
+  pack_id, acquisition_id, user_id, is_issuing_qualifier
+)
+select
+  'e8250000-0000-4000-8000-000000000001',
+  (select id from owner_field_acquisition),
+  fixture.user_id,
+  true
+from location_test_users as fixture
+where fixture.fixture_name = 'owner';
+
+select is(
+  api_private.open_bonus_pack(
+    'a8000000-0000-4000-8000-000000000002',
+    'e8250000-0000-4000-8000-000000000001',
+    'e8250000-0000-4000-8000-000000000002'
+  ) #>> '{bonus_pack,status}',
+  'opened',
+  'the withdrawal fixture owns an opened field bonus pack through the real RPC'
+);
+
 insert into public.personal_cards (
   id, user_id, acquisition_id, photo_path, caption
 )
@@ -2487,6 +2599,24 @@ select is(
   ),
   0::bigint,
   'withdrawal removes all field, temp, fact, disclosure, correction, and consent rows'
+);
+
+select is(
+  (
+    select count(*)::bigint
+    from private.bonus_packs
+    where id = 'e8250000-0000-4000-8000-000000000001'
+  ) + (
+    select count(*)::bigint
+    from private.bonus_pack_qualifiers
+    where pack_id = 'e8250000-0000-4000-8000-000000000001'
+  ) + (
+    select count(*)::bigint
+    from private.bonus_pack_open_requests
+    where pack_id = 'e8250000-0000-4000-8000-000000000001'
+  ),
+  0::bigint,
+  'actual location withdrawal removes the field pack, qualifier, and reveal ledgers'
 );
 
 select ok(

@@ -301,6 +301,74 @@ update public.spots
 set status = 'open'
 where region = 'seoul';
 
+-- One versioned Seoul bonus pool exercises the real reviewer bonus lifecycle.
+insert into storage.objects (bucket_id, name, owner, version)
+values (
+  'special-card-assets',
+  'reviewer-fixture/bonus-special.webp',
+  null,
+  'reviewer-bonus-special-v1'
+);
+
+insert into public.cards (
+  id, spot_id, code, kind, title_ko, title_en, sketch_path,
+  color_hex, is_published
+) values (
+  'd3500000-0000-4000-8000-000000000001',
+  'd2000000-0000-4000-8000-000000000001',
+  'reviewer-bonus-special',
+  'special',
+  '리뷰어 특별',
+  'Reviewer Special',
+  'reviewer-fixture/bonus-special.webp',
+  '#8866AA',
+  false
+);
+
+insert into public.card_translations (
+  card_id, locale, title, status, approved_at, approved_by
+)
+select
+  'd3500000-0000-4000-8000-000000000001',
+  locale_row.locale,
+  'Reviewer Special',
+  'approved',
+  now(),
+  'd1000000-0000-4000-8000-000000000001'
+from unnest(enum_range(null::public.content_locale)) as locale_row(locale);
+
+update public.cards
+set is_published = true, published_at = now()
+where id = 'd3500000-0000-4000-8000-000000000001';
+
+insert into private.bonus_pack_pool_versions (
+  id, region_code, version_code
+) values (
+  'd4500000-0000-4000-8000-000000000001',
+  'seoul',
+  'reviewer-lifecycle-v1'
+);
+
+insert into private.bonus_pack_pool_cards (
+  pool_version_id, card_id, rarity, sort_order
+) values
+  (
+    'd4500000-0000-4000-8000-000000000001',
+    'd3000000-0000-4000-8000-000000000001',
+    'common',
+    1
+  ),
+  (
+    'd4500000-0000-4000-8000-000000000001',
+    'd3500000-0000-4000-8000-000000000001',
+    'special',
+    1
+  );
+
+update private.bonus_pack_pool_versions
+set published_at = clock_timestamp()
+where id = 'd4500000-0000-4000-8000-000000000001';
+
 -- Complete four-policy current set; fixture acceptances are system-labelled.
 insert into private.policy_documents (
   id, policy_type, version, effective_at, published_at, is_current
@@ -616,6 +684,53 @@ select is(
   6::bigint,
   'exactly six retro acquisitions are installed'
 );
+
+create temp table initial_reviewer_bonus_pack on commit drop as
+select pack_row.id
+from private.bonus_packs as pack_row
+where pack_row.user_id = (select user_id from reviewer_fixture_user)
+  and pack_row.issuance_kind = 'reviewer_fixture';
+
+select is(
+  (
+    select count(*)::bigint
+    from private.bonus_packs
+    where user_id = (select user_id from reviewer_fixture_user)
+      and issuance_kind = 'reviewer_fixture'
+      and state = 'sealed'
+  ),
+  1::bigint,
+  'actual reviewer provision creates one deterministic sealed bonus pack'
+);
+
+insert into private.minimum_age_attestations (
+  user_id, minimum_age_passed, version
+)
+select user_id, true, '18plus-v1'
+from reviewer_fixture_user;
+
+select is(
+  api_private.open_bonus_pack(
+    'd1000000-0000-4000-8000-000000000002',
+    (select id from initial_reviewer_bonus_pack),
+    'd5500000-0000-4000-8000-000000000001'
+  ) #>> '{bonus_pack,status}',
+  'opened',
+  'reviewer can reveal the provisioned fixture through the real open RPC'
+);
+
+delete from private.minimum_age_attestations
+where user_id = (select user_id from reviewer_fixture_user);
+
+select is(
+  (
+    select count(*)::bigint
+    from private.bonus_pack_open_requests
+    where pack_id = (select id from initial_reviewer_bonus_pack)
+  ),
+  1::bigint,
+  'opened reviewer fixture records one reveal request before reset'
+);
 select is(
   (select count(*)::bigint from public.acquisitions where field_sequence is not null),
   0::bigint,
@@ -842,6 +957,23 @@ select is(
   6::bigint,
   'reset does not duplicate retro acquisitions'
 );
+select ok(
+  exists (
+    select 1
+    from private.bonus_packs as pack_row
+    where pack_row.id = (select id from initial_reviewer_bonus_pack)
+      and pack_row.user_id = (select user_id from reviewer_fixture_user)
+      and pack_row.issuance_kind = 'reviewer_fixture'
+      and pack_row.state = 'sealed'
+      and pack_row.opened_at is null
+  )
+  and not exists (
+    select 1
+    from private.bonus_pack_open_requests
+    where pack_id = (select id from initial_reviewer_bonus_pack)
+  ),
+  'actual reviewer reset deletes the reveal ledger and recreates the deterministic pack sealed'
+);
 select is(
   (select count(*)::bigint from public.personal_cards),
   1::bigint,
@@ -1062,6 +1194,19 @@ select is(
   (select count(*)::bigint from private.reviewer_fixture_items where revoked_at is null),
   0::bigint,
   'revoke closes every active fixture inventory row'
+);
+select ok(
+  not exists (
+    select 1
+    from private.bonus_packs
+    where user_id = (select user_id from reviewer_fixture_user)
+  )
+  and not exists (
+    select 1
+    from private.bonus_pack_open_requests as request_row
+    where request_row.user_id = (select user_id from reviewer_fixture_user)
+  ),
+  'actual reviewer revoke removes the bonus pack and reveal ledger'
 );
 select is(
   (select count(*)::bigint from public.personal_cards where share_state <> 'private'),

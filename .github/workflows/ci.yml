@@ -44,6 +44,7 @@ jobs:
       - run: npm run db:test:location-upgrade
       - run: npm run db:test:account-deletion-upgrade
       - run: npm run db:test:reviewer-upgrade
+      - run: npm run db:test:bonus-pack-upgrade
       - if: always()
         run: npx supabase stop --no-backup
 
@@ -61,6 +62,7 @@ jobs:
       - run: npm run db:reset
       - run: npm run db:test
       - run: npm run db:test:concurrency
+      - run: npm run db:test:bonus-pack-concurrency
       - run: npm run db:test:reviewer-concurrency
       - run: npm run build
       - run: npm run api:test:account-deletion

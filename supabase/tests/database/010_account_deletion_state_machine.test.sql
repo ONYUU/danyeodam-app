@@ -366,7 +366,7 @@ insert into public.cards (
   'e2000000-0000-4000-8000-000000000001',
   'e1000000-0000-4000-8000-000000000001',
   'account-deletion-card',
-  'special',
+  'region',
   '삭제 테스트 카드',
   'Deletion test card',
   'cards/account-deletion-test.webp',
@@ -390,6 +390,72 @@ update public.cards
 set is_published = true,
     published_at = now()
 where id = 'e2000000-0000-4000-8000-000000000001'::uuid;
+
+insert into storage.objects (bucket_id, name, owner, version)
+values (
+  'special-card-assets',
+  'account-deletion/bonus-special.webp',
+  null,
+  'account-deletion-bonus-special-v1'
+);
+
+insert into public.cards (
+  id, spot_id, code, kind, title_ko, title_en, sketch_path, color_hex
+) values (
+  'e2100000-0000-4000-8000-000000000001',
+  'e1000000-0000-4000-8000-000000000001',
+  'account-deletion-bonus-special',
+  'special',
+  '삭제 특별 카드',
+  'Deletion Bonus Special',
+  'account-deletion/bonus-special.webp',
+  '#8866AA'
+);
+
+insert into public.card_translations (
+  card_id, locale, title, status, approved_at, approved_by
+)
+select
+  'e2100000-0000-4000-8000-000000000001',
+  locale_name::public.content_locale,
+  'Deletion Bonus Special ' || locale_name,
+  'approved',
+  now(),
+  'e0000000-0000-4000-8000-000000000001'
+from unnest(array['ko', 'en', 'ja', 'zh-Hans', 'zh-Hant', 'vi'])
+  as locale_name;
+
+update public.cards
+set is_published = true, published_at = now()
+where id = 'e2100000-0000-4000-8000-000000000001';
+
+insert into private.bonus_pack_pool_versions (
+  id, region_code, version_code
+) values (
+  'e2300000-0000-4000-8000-000000000001',
+  'account-delete-test',
+  'account-delete-v1'
+);
+
+insert into private.bonus_pack_pool_cards (
+  pool_version_id, card_id, rarity, sort_order
+) values
+  (
+    'e2300000-0000-4000-8000-000000000001',
+    'e2000000-0000-4000-8000-000000000001',
+    'common',
+    1
+  ),
+  (
+    'e2300000-0000-4000-8000-000000000001',
+    'e2100000-0000-4000-8000-000000000001',
+    'special',
+    1
+  );
+
+update private.bonus_pack_pool_versions
+set published_at = clock_timestamp()
+where id = 'e2300000-0000-4000-8000-000000000001';
 
 insert into private.location_use_facts (
   user_id, idempotency_key, spot_id, purpose
@@ -421,6 +487,62 @@ where role = 'subject';
 update private.location_use_facts
 set outcome = 'passed', decided_at = clock_timestamp()
 where idempotency_key = 'e4000000-0000-4000-8000-000000000001'::uuid;
+
+insert into private.bonus_packs (
+  id, user_id, issuance_kind, issued_on_kst, pool_version_id,
+  result_card_id, result_rarity, rarity_roll, selection_roll,
+  guarantee_applied, state, issued_at
+)
+select
+  'e2400000-0000-4000-8000-000000000001',
+  fixture.user_id,
+  'field_daily',
+  acquisition_row.acquired_on_kst,
+  'e2300000-0000-4000-8000-000000000001',
+  'e2000000-0000-4000-8000-000000000001',
+  'common',
+  1,
+  0,
+  false,
+  'sealed',
+  clock_timestamp()
+from test_account_deletion_users as fixture
+join public.acquisitions as acquisition_row
+  on acquisition_row.id = 'e3000000-0000-4000-8000-000000000001'
+where fixture.role = 'subject';
+
+insert into private.bonus_pack_qualifiers (
+  pack_id, acquisition_id, user_id, is_issuing_qualifier
+)
+select
+  'e2400000-0000-4000-8000-000000000001',
+  'e3000000-0000-4000-8000-000000000001',
+  fixture.user_id,
+  true
+from test_account_deletion_users as fixture
+where fixture.role = 'subject';
+
+select is(
+  api_private.open_bonus_pack(
+    'e0000000-0000-4000-8000-000000000001',
+    'e2400000-0000-4000-8000-000000000001',
+    'e2500000-0000-4000-8000-000000000001'
+  ) #>> '{bonus_pack,status}',
+  'opened',
+  'the deletion fixture owns an opened field bonus pack through the real RPC'
+);
+
+select ok(
+  exists (
+    select 1 from private.bonus_pack_qualifiers
+    where pack_id = 'e2400000-0000-4000-8000-000000000001'
+  )
+  and exists (
+    select 1 from private.bonus_pack_open_requests
+    where pack_id = 'e2400000-0000-4000-8000-000000000001'
+  ),
+  'the deletion subject has qualifier and reveal ledgers before erasure'
+);
 
 insert into private.personal_card_temp_uploads (
   id,
@@ -1113,6 +1235,24 @@ select is(
   ),
   0::bigint,
   'logical user and all owner-bound product data are hard-deleted'
+);
+
+select is(
+  (
+    select count(*)::bigint
+    from private.bonus_packs
+    where id = 'e2400000-0000-4000-8000-000000000001'
+  ) + (
+    select count(*)::bigint
+    from private.bonus_pack_qualifiers
+    where pack_id = 'e2400000-0000-4000-8000-000000000001'
+  ) + (
+    select count(*)::bigint
+    from private.bonus_pack_open_requests
+    where pack_id = 'e2400000-0000-4000-8000-000000000001'
+  ),
+  0::bigint,
+  'full account deletion cascades the pack, qualifier, and reveal ledgers atomically'
 );
 
 select ok(
