@@ -323,7 +323,7 @@ try {
       CRON_SECRET: cronSecret,
       PUBLIC_APP_URL: "https://account-delete-e2e.example.test",
       VERCEL: "1",
-      VERCEL_ENV: "preview",
+      VERCEL_ENV: "development",
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
