@@ -21,6 +21,7 @@
     "assets:assert": "node ./scripts/assert-brand-assets.mjs",
     "config:assert:production": "node ./scripts/assert-native-config.mjs",
     "export:production:verify": "node ./scripts/export-production.mjs",
+    "release:public-config-sha256": "node ./scripts/compute-mobile-public-config-sha256.mjs",
     "eas-build-pre-install": "node ./scripts/assert-eas-release-gate.mjs",
     "release:preflight": "npm --prefix ../.. run verify:public-source && npm run check && npm run config:assert:production",
     "export:production": "npm run release:preflight && npm run export:production:verify",

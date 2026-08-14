@@ -56,11 +56,18 @@ production 설정을 확인합니다. 이 성공은 카드 권리, 서울 현장
 
 `release:build`의 EAS production 단계는 저장소 밖에서 주입한
 `DANYEODAM_RELEASE_APPROVAL_FILE`을 추가로 검사합니다. 승인파일은 정확한 빌드 Git SHA와
-비공개 카드 권리·현장·스토어 사전검증 산출물의 SHA-256을 포함해야 하며, 누락·불일치 시
+비공개 카드 권리·현장·스토어 사전검증 산출물의 SHA-256과 현재 production
+API·Supabase·publishable-key fingerprint·정렬된 policy origin·앱 버전·source SHA·
+승인자가 기대한 서버 보너스 rollout scope의 통합 SHA-256을 포함해야 하며,
+누락·불일치 시
 빌드를 중단합니다. 형식과 보안 경계는
 [`docs/PRIVATE-RELEASE-ATTESTATION.md`](../../docs/PRIVATE-RELEASE-ATTESTATION.md)에 정리돼
 있습니다. 서명 IPA/AAB와 심볼의 최종 검사는 비공개 출시 파이프라인에서 수행하며,
 해당 자료와 도구는 이 공개 저장소에 포함하지 않습니다.
+
+`expectedServerBonusPackIssuanceScope`는 승인자의 기대값을 해시에 묶는 필드이며
+앱 번들에 포함되지 않습니다. EAS는 Vercel의 실제 server-only env를 검증하지
+못하므로 출시 직전 두 값을 별도로 대조해야 합니다.
 
 GitHub Actions의 `Public code release preflight` 수동 실행도 공개 코드만 검증합니다.
 따라서 그 workflow의 성공을 스토어 제출 승인으로 사용하면 안 됩니다.
@@ -70,7 +77,8 @@ GitHub Actions의 `Public code release preflight` 수동 실행도 공개 코드
 `eas.json`은 `development`, `e2e`, `preview`, `production` 네 프로필만 정의합니다. 제출 설정과 실제 자격 증명은 포함하지 않습니다.
 
 - 개발 및 E2E는 로컬 API 기본값을 사용할 수 있습니다.
-- preview와 production은 공개 HTTPS `EXPO_PUBLIC_API_BASE_URL`과 `EXPO_PUBLIC_SUPABASE_URL`, Supabase publishable key, 쉼표로 구분한 exact-origin `EXPO_PUBLIC_POLICY_ALLOWED_ORIGINS`가 없으면 설정 단계에서 실패합니다. localhost·사설 IP·query·fragment를 거부하고 `sb_secret_`·service-role key를 앱에 포함하지 못하게 차단합니다.
+- preview와 production은 공개 HTTPS `EXPO_PUBLIC_API_BASE_URL`과 `EXPO_PUBLIC_SUPABASE_URL`, Supabase publishable key, 쉼표로 구분한 exact-origin `EXPO_PUBLIC_POLICY_ALLOWED_ORIGINS`가 없으면 설정 단계에서 실패합니다. localhost·사설 IP·문서용 IP·`.invalid/.example/.test/.localhost`·`example.com/net/org`·query·fragment를 예외 없이 거부하고 `sb_secret_`·service-role key를 앱에 포함하지 못하게 차단합니다.
+- `config:assert:production`과 `export:production:verify`는 실제 네트워크 요청 없이 공개 형식의 `release-fixture` 호스트로 구조만 검증합니다. 실제 EAS를 위한 예약 호스트 우회 플래그는 존재하지 않습니다.
 - EAS CLI, Node, npm은 각각 `21.8.0`, `24.19.0`, `11.16.0`으로 고정합니다. 각 프로필은 Corepack을 사용하고 커밋되지 않은 소스로 빌드하지 않습니다.
 - EAS 프로젝트 연결, Apple Team, Android signing, 운영 API 도메인은 후속 보안 설정에서 주입해야 합니다.
 
@@ -94,6 +102,7 @@ GitHub Actions의 `Public code release preflight` 수동 실행도 공개 코드
 - native에서 세션은 iOS Keychain·Android Keystore 기반 `expo-secure-store`에 UTF-8 청크로 나누어 저장합니다. 세션을 로그에 기록하지 않습니다.
 - 이메일 연결을 시작할 때 `expo-crypto`의 native CSPRNG와 SHA-256으로 flow별 S256 PKCE를 만듭니다. verifier·원래 Auth 사용자 ID·생성 시각만 SecureStore에 최대 65분 보관하고, 서버에는 challenge와 소문자 UUID v4 flow ID만 전송합니다.
 - 이메일 확인 반환 경로는 `danyeodam://auth/callback`으로 고정합니다. 앱은 같은 기기의 일회용 verifier와 일치하는 `code`·`sb_flow_id`만 Supabase Auth에 직접 교환하고, 응답 Auth 사용자 ID가 요청을 시작한 사용자와 같을 때만 세션을 채택합니다. 다른 scheme·host·path, 알 수 없는 query, 중복 처리, implicit access/refresh token fragment는 거부합니다.
+- 서버 preview·production 배포도 위 callback과 정확히 같아야 합니다. 현재 공개 Next 서버에는 HTTPS callback handler가 없고 native universal link도 설정하지 않았으므로 배포 gate는 HTTPS 대체 경로를 허용하지 않습니다.
 - 스토어 심사자는 `danyeodam://reviewer-login`으로만 진입합니다. 이메일·비밀번호 세션 생성 후 서버의 `/api/me/access` 결과가 `store_reviewer`가 아니면 로컬 세션을 즉시 제거합니다.
 - 심사 계정도 현장 `field` 위치 판정을 우회하지 않습니다. 심사 픽스처는 서버가 지급한 `retro`로만 구성합니다.
 - 공통 API 클라이언트는 보호 요청에만 Bearer 세션을 첨부하고 10초 타임아웃을 적용합니다. 서버가 401을 반환하면 철회된 바인딩으로 보고 로컬 세션을 즉시 제거하며, 토큰·요청 본문·서버 진단 문구를 오류 객체에 보관하지 않습니다.

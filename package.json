@@ -9,7 +9,8 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run env:assert:deployment && next build",
+    "env:assert:deployment": "node --conditions=react-server --experimental-strip-types scripts/assert-server-deployment-env.mjs",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",

@@ -19,6 +19,10 @@
 이력은 이 저장소에 복제하지 않으며, 공개 저장소는 검증된 단일 스냅샷에서 시작한다.
 일일 보너스 팩의 신규 발급 scope와 사용자 귀속 pagination 서명키는 각각
 `BONUS_PACK_ISSUANCE_SCOPE`·`BONUS_PACK_CURSOR_SECRET` 서버 환경변수로만 주입한다.
+서버 preview·production 빌드는 `npm run env:assert:deployment`를 먼저 실행해
+필수 cursor/HMAC secret, Supabase 공개·service key 역할, 운영 공개 URL을
+검증한다. `.invalid`, `.example`, `.test`, `.localhost`, `example.com/net/org`,
+사설·문서용 IP는 Vercel build 시작 단계에서 거부한다.
 특별 카드의 승인 전 원본·참조 보드·권리자료는 공개 저장소에 두지 않는다.
 승인 후 운영 자산도 공개 일반카드 endpoint와 분리하며, 앱 사용자는 active adult 인증과
 실제 개봉 소유권을 다시 확인하는 `/api/me/special-card-assets/:cardId`로만 받는다. 특별
@@ -28,6 +32,10 @@
 ## 출시 경계
 
 공개 CI 성공은 코드의 빌드 가능성과 테스트 통과만 의미한다. production EAS 빌드는
-저장소 밖의 비공개 승인파일과 정확한 Git SHA가 일치할 때만 진행한다. 정식 출시는 여기에
+저장소 밖의 비공개 승인파일과 정확한 Git SHA·앱 버전·production API·Supabase·
+publishable-key fingerprint·정렬된 정책 origin·승인자가 기대한 서버 보너스 scope의
+통합 SHA-256가 일치할 때만 진행한다. 서버 scope 기대값은 모바일 번들에
+주입하지 않으며, Vercel의 실제 scope와는 출시 직전 별도 운영 대조가 필요하다.
+정식 출시는 여기에
 운영 백엔드, 권리·현장·번역·정책 승인, 정식 서명, 실제 기기, App Store·Google Play
 콘솔 검증이 추가로 필요하다.

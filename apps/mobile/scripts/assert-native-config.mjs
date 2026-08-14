@@ -18,17 +18,21 @@ import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const expoCliPath = require.resolve('expo/bin/cli');
 const projectRoot = dirname(dirname(fileURLToPath(import.meta.url)));
+const mobilePackage = JSON.parse(
+  readFileSync(join(projectRoot, 'package.json'), 'utf8'),
+);
 const supportedLocales = ['ko', 'en', 'ja', 'zh-Hans', 'zh-Hant', 'vi'];
 const productionEnvironment = {
   ...process.env,
   APP_ENV: 'production',
   CI: '1',
   EXPO_NO_TELEMETRY: '1',
-  EXPO_PUBLIC_API_BASE_URL: 'https://api.ci.danyeodam.invalid',
-  EXPO_PUBLIC_SUPABASE_URL: 'https://database.ci.danyeodam.invalid',
-  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_ci_validation_only',
+  EXPO_PUBLIC_API_BASE_URL: 'https://api.release-fixture.danyeodam.app',
+  EXPO_PUBLIC_SUPABASE_URL: 'https://release-fixture.supabase.co',
+  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+    'sb_publishable_F9x7K2mP4qR8sT6vW3yZ5aBcD1eG0hJ',
   EXPO_PUBLIC_POLICY_ALLOWED_ORIGINS:
-    'https://policies.ci.danyeodam.invalid,https://support.ci.danyeodam.invalid',
+    'https://policies.release-fixture.danyeodam.app,https://support.release-fixture.danyeodam.app',
 };
 
 function runExpo(args, cwd = projectRoot) {
@@ -107,13 +111,14 @@ function assertIntrospection() {
   assert(manifest, 'Expo introspection did not return the Android manifest.');
   assert.equal(config.ios?.bundleIdentifier, 'kr.danyeodam.app');
   assert.equal(config.android?.package, 'kr.danyeodam.app');
+  assert.equal(config.version, mobilePackage.version);
   assert.equal(
     config.extra?.supabaseUrl,
-    'https://database.ci.danyeodam.invalid',
+    'https://release-fixture.supabase.co',
   );
   assert.deepEqual(config.extra?.policyAllowedOrigins, [
-    'https://policies.ci.danyeodam.invalid',
-    'https://support.ci.danyeodam.invalid',
+    'https://policies.release-fixture.danyeodam.app',
+    'https://support.release-fixture.danyeodam.app',
   ]);
   assert.deepEqual(Object.keys(config.locales ?? {}).sort(), [...supportedLocales].sort());
 

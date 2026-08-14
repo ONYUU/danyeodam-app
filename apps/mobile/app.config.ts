@@ -1,4 +1,5 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
+import mobilePackage from './package.json';
 
 import { resolvePublicEnvironment } from './src/config/public-environment.cjs';
 
@@ -79,12 +80,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       };
   const baseExtra = { ...config.extra };
   delete baseExtra.buildSourceCommitSha;
+  delete baseExtra.expectedServerBonusPackIssuanceScope;
+  delete baseExtra.mobilePublicConfigSha256;
+  delete baseExtra.BONUS_PACK_ISSUANCE_SCOPE;
 
   return {
     ...config,
     name: '다녀담',
     slug: 'danyeodam',
-    version: '0.1.0',
+    version: mobilePackage.version,
     orientation: 'portrait',
     scheme: 'danyeodam',
     userInterfaceStyle: 'automatic',

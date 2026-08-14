@@ -27,18 +27,24 @@ describe('public environment validation', () => {
   });
 
   it('requires https for preview and production', () => {
-    expect(() => parseApiBaseUrl('http://example.com', 'preview')).toThrow(
+    expect(() => parseApiBaseUrl('http://api.release-fixture.danyeodam.app', 'preview')).toThrow(
       'must use https',
     );
-    expect(parseApiBaseUrl('https://api.example.com/', 'production')).toBe(
-      'https://api.example.com',
+    expect(parseApiBaseUrl(
+      'https://api.release-fixture.danyeodam.app/',
+      'production',
+    )).toBe(
+      'https://api.release-fixture.danyeodam.app',
     );
   });
 
   it('rejects unsupported environments and credential-bearing URLs', () => {
     expect(() => parseAppEnvironment('staging')).toThrow('APP_ENV must be one of');
     expect(() =>
-      parseApiBaseUrl('https://user:password@example.com', 'production'),
+      parseApiBaseUrl(
+        'https://user:password@api.release-fixture.danyeodam.app',
+        'production',
+      ),
     ).toThrow('must not contain credentials');
   });
 
@@ -53,15 +59,43 @@ describe('public environment validation', () => {
     'https://[::1]',
     'https://[fd00::1]',
     'https://[::ffff:127.0.0.1]',
-  ])('rejects private production endpoint %s', (endpoint) => {
+    'https://api.invalid',
+    'https://api.example',
+    'https://api.test',
+    'https://api.localhost',
+    'https://local',
+    'https://internal-api',
+    'https://example.com',
+    'https://subdomain.example.net',
+    'https://example.org',
+    'https://192.0.2.10',
+    'https://192.0.0.1',
+    'https://192.88.99.1',
+    'https://198.51.100.10',
+    'https://203.0.113.10',
+    'https://[2001:db8::10]',
+    'https://[100::1]',
+    'https://[100:0:0:1::1]',
+    'https://[2001:5::1]',
+    'https://[300::1]',
+    'https://[3fff::10]',
+    'https://[::192.0.2.10]',
+    'https://[::8.8.8.8]',
+    'https://[::ffff:8.8.8.8]',
+    'https://[64:ff9b::c000:201]',
+    'https://[ff02::1]',
+    'https://device.home.arpa',
+    'https://service.internal',
+    'https://service.onion',
+  ])('rejects non-public production endpoint %s', (endpoint) => {
     expect(() => parseApiBaseUrl(endpoint, 'production')).toThrow(
-      'must not use localhost or a private network address',
+      'must not use private, reserved, documentation, or placeholder hosts',
     );
   });
 
   it.each([
-    'https://api.example.com?token=public',
-    'https://api.example.com/#fragment',
+    'https://api.release-fixture.danyeodam.app?token=public',
+    'https://api.release-fixture.danyeodam.app/#fragment',
   ])('rejects a production query or fragment in %s', (endpoint) => {
     expect(() => parseApiBaseUrl(endpoint, 'production')).toThrow(
       'must not include a query or fragment',
@@ -82,7 +116,7 @@ describe('public environment validation', () => {
       'must use https',
     );
     expect(() => parseSupabaseUrl('https://127.0.0.1', 'production')).toThrow(
-      'must not use localhost or a private network address',
+      'must not use private, reserved, documentation, or placeholder hosts',
     );
     expect(() => parseSupabaseUrl('https://project.supabase.co/rest', 'production')).toThrow(
       'must not contain a path',
@@ -109,22 +143,37 @@ describe('public environment validation', () => {
       'sb_secret_never_bundle_this',
       'production',
     )).toThrow('must never be bundled');
+    expect(() => parseSupabasePublishableKey(
+      'sb_publishable_replace_with_real_value',
+      'production',
+    )).toThrow('must not be a placeholder value');
+    expect(() => parseSupabasePublishableKey(
+      'sb_publishable_!!!!!!!!!!!!',
+      'production',
+    )).toThrow('must be a publishable key');
   });
 
   it('requires an exact public HTTPS policy-origin allowlist for public builds', () => {
     expect(parsePolicyAllowedOrigins(
-      'https://policies.example, https://support.example/',
+      'https://policies.release-fixture.danyeodam.app, https://support.release-fixture.danyeodam.app/',
       'production',
-    )).toEqual(['https://policies.example', 'https://support.example']);
+    )).toEqual([
+      'https://policies.release-fixture.danyeodam.app',
+      'https://support.release-fixture.danyeodam.app',
+    ]);
     expect(() => parsePolicyAllowedOrigins('', 'production')).toThrow(
       'is required',
     );
     for (const value of [
-      'http://policies.example',
-      'https://policies.example/path',
+      'http://policies.release-fixture.danyeodam.app',
+      'https://policies.release-fixture.danyeodam.app/path',
       'https://127.0.0.1',
-      'https://user:password@policies.example',
-      'https://policies.example,https://policies.example/',
+      'https://192.0.2.20',
+      'https://[2001:db8::20]',
+      'https://policies.invalid',
+      'https://example.com',
+      'https://user:password@policies.release-fixture.danyeodam.app',
+      'https://policies.release-fixture.danyeodam.app,https://policies.release-fixture.danyeodam.app/',
     ]) {
       expect(() => parsePolicyAllowedOrigins(value, 'production')).toThrow();
     }
