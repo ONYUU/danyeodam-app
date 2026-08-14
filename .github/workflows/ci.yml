@@ -40,6 +40,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm run ci:remap-supabase-ports
       - run: npx supabase start
       - run: npm run db:test:location-upgrade
       - run: npm run db:test:account-deletion-upgrade
@@ -58,6 +59,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - run: npm run ci:remap-supabase-ports
       - run: npx supabase start
       - run: npm run db:reset
       - run: npm run db:test
@@ -72,6 +74,9 @@ jobs:
       - run: npm run api:test:localized-read
       - run: npm run api:test:location-compliance
       - run: npm run api:test:reviewer-access
+      - run: npm run api:test:bonus-pack
+        env:
+          DANYEODAM_BONUS_PACK_E2E_ALLOW_DISPOSABLE: "true"
       - run: npm run db:lint
       - run: npm run db:advisors
       - if: always()
