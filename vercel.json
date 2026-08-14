@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/internal/maintenance/temp-uploads",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/internal/maintenance/location-compliance",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/internal/maintenance/account-deletions",
+      "schedule": "* * * * *"
+    }
+  ]
+}

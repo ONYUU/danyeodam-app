@@ -1,0 +1,56 @@
+{
+  "cli": {
+    "version": "21.8.0",
+    "requireCommit": true,
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "node": "24.19.0",
+      "corepack": true,
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development",
+      "environment": "development",
+      "env": {
+        "APP_ENV": "development"
+      }
+    },
+    "e2e": {
+      "node": "24.19.0",
+      "corepack": true,
+      "distribution": "internal",
+      "channel": "e2e",
+      "environment": "development",
+      "ios": {
+        "simulator": true
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_ENV": "e2e"
+      }
+    },
+    "preview": {
+      "node": "24.19.0",
+      "corepack": true,
+      "distribution": "internal",
+      "channel": "preview",
+      "environment": "preview",
+      "env": {
+        "APP_ENV": "preview"
+      }
+    },
+    "production": {
+      "node": "24.19.0",
+      "corepack": true,
+      "channel": "production",
+      "environment": "production",
+      "autoIncrement": true,
+      "env": {
+        "APP_ENV": "production"
+      }
+    }
+  }
+}

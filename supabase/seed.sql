@@ -1,0 +1,6 @@
+-- Stage 0 spot coordinates and radii are intentionally not seeded.
+-- The approved deployment input is content/seoul-launch/seoul-launch-content.v1.json.
+-- It remains fail-closed until field tests confirm all six outdoor checkpoints,
+-- especially the Cheongjin Park checkpoint described in product copy as
+-- "LoL PARK 인근 외부 인증지점". Indoor LoL PARK admission is never inferred
+-- from GPS. Do not use `db push --include-seed` to publish launch content.

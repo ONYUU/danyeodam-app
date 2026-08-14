@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocationWhenInUseUsageDescription": "DANYEODAM仅在你尝试领取旅行卡片时检查当前位置。"
+  }
+}

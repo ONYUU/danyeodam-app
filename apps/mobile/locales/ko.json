@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocationWhenInUseUsageDescription": "다녀담은 사용자가 카드 획득을 시도할 때만 현재 위치를 확인합니다."
+  }
+}

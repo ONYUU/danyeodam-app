@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocationWhenInUseUsageDescription": "DANYEODAM chỉ kiểm tra vị trí hiện tại khi bạn yêu cầu nhận thẻ du lịch."
+  }
+}

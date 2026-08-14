@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocationWhenInUseUsageDescription": "DANYEODAM checks your current location only when you try to collect a travel card."
+  }
+}
