@@ -90,4 +90,34 @@ describe('acquire service', () => {
     })).rejects.toMatchObject({ name: 'AcquireRequestError' });
     expect(client).not.toHaveBeenCalled();
   });
+
+  it('accepts only a same-day sealed bonus pack without leaking its result', () => {
+    const packId = '55555555-5555-4555-8555-555555555555';
+    const parsed = parseAcquireSuccess({
+      ...response,
+      bonus_pack: {
+        id: packId,
+        status: 'sealed',
+        issued_at: '2026-08-12T01:00:01.000Z',
+        date_kst: '2026-08-12',
+      },
+    }, { expectedSpotId: spotId, apiBaseUrl: 'https://api.example.com' });
+    expect(parsed.bonusPack).toEqual({
+      id: packId,
+      status: 'sealed',
+      issuedAt: '2026-08-12T01:00:01.000Z',
+      dateKst: '2026-08-12',
+    });
+
+    expect(() => parseAcquireSuccess({
+      ...response,
+      bonus_pack: {
+        id: packId,
+        status: 'sealed',
+        issued_at: '2026-08-12T01:00:01.000Z',
+        date_kst: '2026-08-11',
+      },
+    }, { expectedSpotId: spotId, apiBaseUrl: 'https://api.example.com' }))
+      .toThrow(ApiTransportError);
+  });
 });

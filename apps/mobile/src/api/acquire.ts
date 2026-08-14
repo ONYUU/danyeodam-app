@@ -1,5 +1,9 @@
 import type { ApiClient } from './client';
 import {
+  parseSealedBonusPack,
+  type SealedBonusPack,
+} from './bonus-packs';
+import {
   expectIsoDate,
   expectIsoDateTime,
   expectLocalizedText,
@@ -37,6 +41,7 @@ export type AcquireSuccess = {
     colorHex: string;
   };
   dateKst: string;
+  bonusPack?: SealedBonusPack;
 };
 
 export class AcquireRequestError extends Error {
@@ -91,6 +96,14 @@ export function parseAcquireSuccess(
     return invalidPayload();
   }
 
+  const dateKst = expectIsoDate(back.date_kst);
+  const bonusPack = Object.hasOwn(record, 'bonus_pack')
+    ? parseSealedBonusPack(record.bonus_pack)
+    : null;
+  if (bonusPack !== null && bonusPack.dateKst !== dateKst) {
+    return invalidPayload();
+  }
+
   return {
     acquisition: {
       id: acquisitionId,
@@ -108,7 +121,8 @@ export function parseAcquireSuccess(
         pattern: COLOR_PATTERN,
       }),
     },
-    dateKst: expectIsoDate(back.date_kst),
+    dateKst,
+    ...(bonusPack === null ? {} : { bonusPack }),
   };
 }
 

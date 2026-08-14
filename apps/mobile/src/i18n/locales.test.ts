@@ -145,6 +145,58 @@ const personalCardPhotoKeys = [
   'personalCardPhoto.removeAccepted',
 ] as const;
 
+const bonusPackKeys = [
+  'bonusPack.entryTitle',
+  'bonusPack.entryBody',
+  'bonusPack.entryUnopened',
+  'bonusPack.entryNone',
+  'bonusPack.openInbox',
+  'bonusPack.rulesTitle',
+  'bonusPack.odds',
+  'bonusPack.guarantee',
+  'bonusPack.oneDaily',
+  'bonusPack.noExpiry',
+  'bonusPack.noPurchase',
+  'bonusPack.specialApproval',
+  'bonusPack.listTitle',
+  'bonusPack.listBody',
+  'bonusPack.loading',
+  'bonusPack.emptyTitle',
+  'bonusPack.emptyBody',
+  'bonusPack.sealed',
+  'bonusPack.opened',
+  'bonusPack.received',
+  'bonusPack.view',
+  'bonusPack.detailTitle',
+  'bonusPack.sealedTitle',
+  'bonusPack.sealedBody',
+  'bonusPack.openAction',
+  'bonusPack.opening',
+  'bonusPack.openErrorTitle',
+  'bonusPack.openErrorBody',
+  'bonusPack.openedTitle',
+  'bonusPack.resultAnnouncementCommon',
+  'bonusPack.resultAnnouncementSpecial',
+  'bonusPack.backToCards',
+  'bonusPack.artPending',
+  'bonusPack.rarityCommon',
+  'bonusPack.raritySpecial',
+  'inventory.title',
+  'inventory.body',
+  'inventory.empty',
+  'inventory.loading',
+  'inventory.open',
+  'inventory.quantity',
+  'collection.visitsTitle',
+  'collection.visitsBody',
+  'settings.hapticsTitle',
+  'settings.hapticsBody',
+  'settings.hapticsError',
+  'acquire.bonusPackGrantedTitle',
+  'acquire.bonusPackGrantedBody',
+  'acquire.openBonusPack',
+] as const;
+
 describe('locale resolution', () => {
   it('matches exact and regional locales', () => {
     expect(resolveSupportedLocale(['ko-KR'])).toBe('ko');
@@ -197,6 +249,19 @@ describe('locale resolution', () => {
       expect(TRANSLATIONS[locale]['personalCardPhoto.privacy']).toMatch(/EXIF/iu);
       expect(TRANSLATIONS[locale]['personalCardPhoto.privacy']).toMatch(/GPS/iu);
       expect(TRANSLATIONS[locale]['personalCardPhoto.policyHash']).toBe('SHA-256');
+    }
+  });
+
+  it('keeps bonus packs, inventory, and reveal controls complete in every locale', () => {
+    for (const locale of SUPPORTED_LOCALES) {
+      const values = bonusPackKeys.map((key) => TRANSLATIONS[locale][key]);
+      expect(values.every((value) => value.trim().length > 0)).toBe(true);
+      expect(TRANSLATIONS[locale]['bonusPack.odds']).toMatch(/80/u);
+      expect(TRANSLATIONS[locale]['bonusPack.odds']).toMatch(/20/u);
+      expect(TRANSLATIONS[locale]['bonusPack.guarantee']).toMatch(/4/u);
+      expect(TRANSLATIONS[locale]['settings.hapticsBody']).toMatch(
+        /sound|music|음악|효과음|音|音乐|音效|音樂|nhạc|âm thanh/iu,
+      );
     }
   });
 });
