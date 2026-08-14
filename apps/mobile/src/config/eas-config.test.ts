@@ -21,7 +21,7 @@ const easConfig = JSON.parse(
 ) as EasConfig;
 const packageConfig = JSON.parse(
   readFileSync(join(process.cwd(), 'package.json'), 'utf8'),
-) as { packageManager?: string };
+) as { packageManager?: string; overrides?: Record<string, string> };
 
 describe('EAS toolchain policy', () => {
   it('pins the exact CLI and requires a committed source tree', () => {
@@ -44,6 +44,12 @@ describe('EAS toolchain policy', () => {
       expect(profile.node).toBe('24.19.0');
       expect(profile.corepack).toBe(true);
     }
+  });
+
+  it('overrides the vulnerable transitive UUID used by the native Xcode tool', () => {
+    expect(packageConfig.overrides).toMatchObject({
+      uuid: '11.1.1',
+    });
   });
 
   it('keeps every non-production profile on internal distribution', () => {

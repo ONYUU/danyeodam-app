@@ -2107,20 +2107,17 @@ try {
        where acquisition_row.id = $1::uuid`,
       [snapshotAcquisition.rows[0].id],
     );
-  const snapshotUpdatePromise = snapshotUpdateClient.query(
-    "update public.cards set color_hex = '#8899AA' where id = $1",
-    [ids.cardRace],
+  const snapshotUpdatePromise = captureQuery(
+    snapshotUpdateClient.query(
+      "update public.cards set color_hex = '#8899AA' where id = $1",
+      [ids.cardRace],
+    ),
   );
   await waitForLock(admin, snapshotUpdateClient.processID, "acquired card snapshot update");
   await snapshotAcquisitionClient.query("commit");
-  let snapshotUpdateError;
-  try {
-    await snapshotUpdatePromise;
-  } catch (error) {
-    snapshotUpdateError = error;
-  }
+  const snapshotUpdate = await snapshotUpdatePromise;
   assert(
-    snapshotUpdateError?.code === "23514",
+    snapshotUpdate.error?.code === "23514",
     "concurrent acquired-card snapshot mutation was not rejected",
   );
   await closeScenarioClients(snapshotAcquisitionClient, snapshotUpdateClient);
