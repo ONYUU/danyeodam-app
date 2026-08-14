@@ -192,7 +192,12 @@ export function MinimumAgeStatusScreen({
         {loading ? (
           <ActivityIndicator accessibilityLabel={title} color={colors.accent} size="large" />
         ) : null}
-        <Text accessibilityRole="header" style={[styles.title, styles.centeredText]}>
+        <Text
+          accessibilityRole="header"
+          lineBreakStrategyIOS="standard"
+          style={[styles.title, styles.centeredText, styles.statusTitle]}
+          textBreakStrategy="balanced"
+        >
           {title}
         </Text>
         <Text accessibilityLiveRegion="polite" style={[styles.body, styles.centeredText]}>
@@ -374,6 +379,10 @@ const styles = StyleSheet.create({
   },
   centeredText: {
     textAlign: 'center',
+  },
+  statusTitle: {
+    width: '100%',
+    maxWidth: 520,
   },
   statusButton: {
     marginTop: spacing.sm,

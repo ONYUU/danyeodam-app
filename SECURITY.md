@@ -16,3 +16,13 @@ evidence must remain in their dedicated secret managers or store-console private
 The repository safety check runs on every pull request and push to `main`. GitHub secret scanning
 and push protection are additional controls; neither replaces credential rotation after a suspected
 exposure.
+
+## Static image review
+
+Metro currently depends on an upstream image parser with open denial-of-service advisories and no
+official patched release. Until an official compatible fix is available, the public repository
+allows only the three reviewed mobile PNG brand assets whose path, dimensions, byte limit, and
+SHA-256 digest are pinned in `scripts/lib/public-repo-safety.mjs`. The safety check runs before
+dependency installation and Metro export in Mobile CI. New or changed static images must be reviewed
+and added to that allowlist in the same pull request; renamed or disguised ICNS, JPEG XL, HEIF, and
+JPEG 2000 inputs are rejected. Upstream remediation remains tracked in GitHub issue #5.

@@ -265,5 +265,12 @@ describe('locale resolution', () => {
         /sound|music|음악|효과음|音|音乐|音效|音樂|nhạc|âm thanh/iu,
       );
     }
+
+    expect(TRANSLATIONS['zh-Hans']['bonusPack.odds']).toBe(
+      '每个卡包包含1张卡：普通80%，特别20%。',
+    );
+    expect(TRANSLATIONS['zh-Hant']['bonusPack.odds']).toBe(
+      '每個卡包包含1張卡：一般80%，特別20%。',
+    );
   });
 });
