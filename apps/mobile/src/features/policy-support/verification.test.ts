@@ -79,6 +79,7 @@ describe('policy resource trust boundary', () => {
     expect(new TextDecoder().decode(verified.bytes)).toBe('verified policy body');
     expect(verified).toMatchObject({
       contentType: 'text/html',
+      integrity: 'sha256',
       url: 'https://policies.example/privacy',
     });
     expect(fetchResource).toHaveBeenCalledWith(
@@ -89,6 +90,23 @@ describe('policy resource trust boundary', () => {
         redirect: 'error',
       }),
     );
+  });
+
+  it('distinguishes hash-pinned policy bytes from HTTPS-origin-only support bytes', async () => {
+    const support = await verifyTrustedResource({
+      acceptedContentTypes: ['text/html'],
+      allowedOrigins: ['https://policies.example'],
+      fetchResource: async () => response(),
+      url: 'https://policies.example/privacy',
+    });
+    expect(support.integrity).toBe('https-origin');
+
+    const fetchResource = vi.fn(async () => response());
+    await expect(verify({
+      expectedSha256: 'A'.repeat(64),
+      fetchResource,
+    })).rejects.toThrow('POLICY_RESOURCE_VERIFICATION_FAILED');
+    expect(fetchResource).not.toHaveBeenCalled();
   });
 
   it('rejects redirects, changed URLs, hash mismatches, and unexpected content types', async () => {

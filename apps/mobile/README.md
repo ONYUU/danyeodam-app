@@ -152,13 +152,18 @@ GitHub Actions의 `Public code release preflight` 수동 실행도 공개 코드
   `EXPO_PUBLIC_POLICY_ALLOWED_ORIGINS`와 URL origin을 정확히 비교하고 HTTPS,
   credential/hash 부재, 2xx, 무리디렉션, 최종 URL 동일을 확인합니다.
   `credentials: "omit"`과 10초 단일 deadline을 적용하고, 응답 body를 스트리밍하며
-  2MiB를 넘는 즉시 취소합니다. 정책은 다운로드한 바이트의 SHA-256을 대조한
-  뒤 재요청하지 않고 검증된 동일 바이트를 앱 내 텍스트 뷰어에 표시합니다.
+  2MiB를 넘는 즉시 취소합니다. 표시 텍스트는 262,144 UTF-16 코드 단위로 제한하고,
+  HTML은 파싱 전에 256KiB와 마크업 시작 4,096개 상한도 적용합니다. 정책은
+  다운로드한 바이트의 SHA-256을 대조한 뒤 재요청하지 않고, 검증된 동일 응답
+  바이트에서 표준 HTML 파서로 추출·정규화한 텍스트를 앱 내 뷰어에 표시합니다.
+  `application/xhtml+xml`은 XML 전용 파서가 없으므로 거부합니다.
   지원 URL도 동일한 origin·무리디렉션·스트리밍 상한을 통과한 한 번의
-  응답 내용만 앱 안에 표시합니다.
+  응답 내용만 앱 안에 표시하며, 지원 페이지는 SHA-256 고정 대상이 아님을 화면에
+  구분해 안내합니다.
 - 정상 응답은 공개 문서 메타데이터만 로컬에 저장합니다. 서버가 일시적으로
-  unavailable이면 저장된 목록임을 명시하고 새로고침을 제공하며, 실제 문서를 열 때는
-  다시 원격 응답과 hash를 검증하므로 오프라인에서 검증되지 않은 링크를 열지 않습니다.
+  unavailable이면 저장된 목록임을 명시하고 새로고침을 제공하며, 실제 정책 문서를
+  열 때는 다시 원격 응답과 hash를 검증하므로 오프라인에서 검증되지 않은 링크를
+  열지 않습니다.
 - 실제 운영 URL 값과 문서 바이트는 저장소에 넣지 않습니다. production 배포 전에
   서버 `PUBLIC_SUPPORT_URL`, 앱 `EXPO_PUBLIC_POLICY_ALLOWED_ORIGINS`, DB의 4종×6개
   문서 URL·SHA-256을 동일한 공개 HTTPS 호스트 구성으로 주입하고 canary를 수행해야

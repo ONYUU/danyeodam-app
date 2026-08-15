@@ -11,7 +11,6 @@ import { verifyTrustedResource } from './verification';
 
 const TEXT_CONTENT_TYPES = [
   'text/html',
-  'application/xhtml+xml',
   'text/plain',
 ] as const;
 
@@ -52,7 +51,6 @@ export async function verifySupportUrl(input: {
     acceptedContentTypes: TEXT_CONTENT_TYPES,
     allowedOrigins: input.allowedOrigins,
     fetchResource: expoFetch,
-    hashBytes: sha256,
     ...(input.signal === undefined ? {} : { signal: input.signal }),
     url: input.url,
   });
