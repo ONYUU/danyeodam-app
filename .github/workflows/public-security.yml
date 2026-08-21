@@ -18,6 +18,6 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
-          node-version: 24
+          node-version: 24.19.0
       - run: node --test scripts/test-public-repo-safety.mjs
       - run: node scripts/check-public-repo-safety.mjs

@@ -96,6 +96,52 @@ test('GitHub workflows pin actions and discard checkout credentials', () => {
   }
 });
 
+test('CI enforces the pinned npm install policy and the lockfile-bound EAS CLI', () => {
+  const ci = readFileSync(path.join(root, '.github/workflows/ci.yml'), 'utf8');
+  const mobileCi = readFileSync(path.join(root, '.github/workflows/mobile-ci.yml'), 'utf8');
+  const releasePreflight = readFileSync(
+    path.join(root, '.github/workflows/release-preflight.yml'),
+    'utf8',
+  );
+  const mobilePackage = JSON.parse(
+    readFileSync(path.join(root, 'apps/mobile/package.json'), 'utf8'),
+  );
+  const releaseToolPackage = JSON.parse(
+    readFileSync(path.join(root, 'tools/eas-cli/package.json'), 'utf8'),
+  );
+
+  assert.equal((ci.match(/corepack enable/gu) ?? []).length, 3);
+  assert.equal((ci.match(/corepack npm ci --strict-allow-scripts/gu) ?? []).length, 3);
+  assert.equal((ci.match(/corepack npm --version\)" = "11\.16\.0"/gu) ?? []).length, 3);
+  assert.doesNotMatch(ci, /^\s*- run: npm ci\s*$/gmu);
+
+  for (const [label, workflow] of [
+    ['mobile CI', mobileCi],
+    ['release preflight', releasePreflight],
+  ]) {
+    assert.match(workflow, /tools\/eas-cli\/package-lock\.json/u, label);
+    assert.match(
+      workflow,
+      /corepack npm --prefix tools\/eas-cli ci --strict-allow-scripts/u,
+      label,
+    );
+    assert.match(
+      workflow,
+      /corepack npm --offline --prefix tools\/eas-cli run --silent eas -- --version/u,
+      label,
+    );
+  }
+  assert.match(mobileCi, /corepack npm ci --strict-allow-scripts/u);
+  assert.match(releasePreflight, /corepack npm --prefix apps\/mobile ci --strict-allow-scripts/u);
+
+  assert.equal(releaseToolPackage.scripts?.eas, 'eas');
+  assert.equal(
+    mobilePackage.scripts?.['release:build'],
+    'corepack npm run release:preflight && corepack npm --offline --prefix ../../tools/eas-cli run eas -- build --profile production --platform all',
+  );
+  assert.doesNotMatch(mobilePackage.scripts?.['release:build'] ?? '', /\bnpx\b|npm exec/u);
+});
+
 test('high-risk credential material and user paths are detected', () => {
   const privateKey = ['-----BEGIN ', 'PRIVATE KEY-----'].join('');
   const githubToken = `gh${'p'}_${'a'.repeat(36)}`;

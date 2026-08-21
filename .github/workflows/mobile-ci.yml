@@ -45,7 +45,9 @@ jobs:
         with:
           node-version: 24.19.0
           cache: npm
-          cache-dependency-path: apps/mobile/package-lock.json
+          cache-dependency-path: |
+            apps/mobile/package-lock.json
+            tools/eas-cli/package-lock.json
       - name: Verify public repository safety before dependency installation
         working-directory: .
         run: node scripts/check-public-repo-safety.mjs
@@ -54,7 +56,16 @@ jobs:
           corepack enable
           test "$(node --version)" = "v24.19.0"
           test "$(corepack npm --version)" = "11.16.0"
-      - run: corepack npm ci
+      - run: corepack npm ci --strict-allow-scripts
+      - name: Verify the lockfile-bound EAS release tool
+        working-directory: .
+        run: |
+          corepack npm --prefix tools/eas-cli ci --strict-allow-scripts
+          version="$(corepack npm --offline --prefix tools/eas-cli run --silent eas -- --version)"
+          case "$version" in
+            eas-cli/22.2.0*) ;;
+            *) echo "Unexpected EAS CLI version" >&2; exit 1 ;;
+          esac
       - run: corepack npm run check
       - run: corepack npm run config:assert:production
       - name: Verify production bundle generation without asserting release approval

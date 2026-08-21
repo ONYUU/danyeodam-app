@@ -58,8 +58,11 @@ describe('EAS toolchain policy', () => {
       devDependencies: { 'eas-cli': '22.2.0' },
     });
     expect(typedPackage.scripts?.['release:build']).toBe(
-      'npm run release:preflight && npm --prefix ../../tools/eas-cli exec --offline -- eas build --profile production --platform all',
+      'corepack npm run release:preflight && corepack npm --offline --prefix ../../tools/eas-cli run eas -- build --profile production --platform all',
     );
+    expect((releaseToolPackage as typeof releaseToolPackage & { scripts?: Record<string, string> }).scripts).toEqual({
+      eas: 'eas',
+    });
     expect(typedPackage.allowScripts).toEqual({
       'fsevents@2.3.3': true,
       'unrs-resolver@1.12.2': true,

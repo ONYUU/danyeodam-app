@@ -9,6 +9,9 @@
   "allowScripts": {
     "dtrace-provider": false
   },
+  "scripts": {
+    "eas": "eas"
+  },
   "devDependencies": {
     "eas-cli": "22.2.0"
   }

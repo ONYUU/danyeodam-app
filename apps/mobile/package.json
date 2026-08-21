@@ -29,7 +29,7 @@
     "eas-build-pre-install": "node ./scripts/assert-eas-release-gate.mjs",
     "release:preflight": "npm --prefix ../.. run verify:public-source && npm run check && npm run config:assert:production",
     "export:production": "npm run release:preflight && npm run export:production:verify",
-    "release:build": "npm run release:preflight && npm --prefix ../../tools/eas-cli exec --offline -- eas build --profile production --platform all",
+    "release:build": "corepack npm run release:preflight && corepack npm --offline --prefix ../../tools/eas-cli run eas -- build --profile production --platform all",
     "check": "npm run typecheck && npm run lint && npm test && npm run doctor && npm run assets:assert"
   },
   "dependencies": {

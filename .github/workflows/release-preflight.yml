@@ -25,15 +25,24 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             apps/mobile/package-lock.json
+            tools/eas-cli/package-lock.json
       - name: Activate the pinned npm version through Corepack
         run: |
           corepack enable
           test "$(node --version)" = "v24.19.0"
           test "$(corepack npm --version)" = "11.16.0"
       - name: Install application dependencies
-        run: corepack npm ci
+        run: corepack npm ci --strict-allow-scripts
       - name: Install mobile dependencies
-        run: corepack npm --prefix apps/mobile ci
+        run: corepack npm --prefix apps/mobile ci --strict-allow-scripts
+      - name: Install and verify the lockfile-bound EAS release tool
+        run: |
+          corepack npm --prefix tools/eas-cli ci --strict-allow-scripts
+          version="$(corepack npm --offline --prefix tools/eas-cli run --silent eas -- --version)"
+          case "$version" in
+            eas-cli/22.2.0*) ;;
+            *) echo "Unexpected EAS CLI version" >&2; exit 1 ;;
+          esac
       - name: Verify the public repository boundary
         run: corepack npm run security:test-public && corepack npm run security:check-public
       - name: Verify the web application
