@@ -13,6 +13,10 @@ import {
 } from './lib/public-repo-safety.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const approvedActionReferences = new Set([
+  'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1',
+  'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020',
+]);
 
 function makeIsoBox(type, payload) {
   const box = Buffer.alloc(8 + payload.length);
@@ -84,6 +88,7 @@ test('GitHub workflows pin actions and discard checkout credentials', () => {
     assert.ok(actionReferences.length > 0, `${workflowPath} must use at least one action`);
     for (const reference of actionReferences) {
       assert.match(reference, /@[0-9a-f]{40}$/u, `${workflowPath}: ${reference}`);
+      assert.ok(approvedActionReferences.has(reference), `${workflowPath}: ${reference}`);
     }
 
     const checkoutCount = actionReferences.filter((reference) => (
@@ -94,6 +99,14 @@ test('GitHub workflows pin actions and discard checkout credentials', () => {
     )].length;
     assert.equal(hardenedCheckoutCount, checkoutCount, workflowPath);
   }
+
+  const mobileCi = readFileSync(path.join(root, '.github/workflows/mobile-ci.yml'), 'utf8');
+  const pullRequestTrigger = mobileCi.slice(
+    mobileCi.indexOf('  pull_request:'),
+    mobileCi.indexOf('  push:'),
+  );
+  assert.match(pullRequestTrigger, /^  pull_request:\s*$/mu);
+  assert.doesNotMatch(pullRequestTrigger, /\bpaths:/u);
 });
 
 test('CI enforces the pinned npm install policy and the lockfile-bound EAS CLI', () => {
