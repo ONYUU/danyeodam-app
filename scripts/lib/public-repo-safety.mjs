@@ -297,7 +297,10 @@ export const secretPatterns = [
 ];
 
 const forbiddenBasenames = new Set([
+  '.netrc',
   '.npmrc',
+  '.pypirc',
+  '.sentryclirc',
   'google-services.json',
   'googleservice-info.plist',
   'credentials.json',
@@ -305,7 +308,9 @@ const forbiddenBasenames = new Set([
 ]);
 
 const forbiddenExtensions = new Set([
+  '.7z',
   '.aab',
+  '.age',
   '.apk',
   '.apks',
   '.backup',
@@ -313,8 +318,11 @@ const forbiddenExtensions = new Set([
   '.crt',
   '.db',
   '.dump',
+  '.gpg',
+  '.gz',
   '.ipa',
   '.jks',
+  '.kdbx',
   '.key',
   '.keystore',
   '.mobileprovision',
@@ -322,11 +330,16 @@ const forbiddenExtensions = new Set([
   '.p8',
   '.pem',
   '.provisionprofile',
+  '.rar',
   '.sqlite',
   '.sqlite3',
+  '.tar',
+  '.tgz',
+  '.zip',
 ]);
 
 const forbiddenPathPrefixes = [
+  '.direnv/',
   'assets/card-assets/',
   'content/card-assets/',
   'content/seoul-launch/',
@@ -344,10 +357,13 @@ const forbiddenExactPaths = new Set([
   'docs/STORE-SUBMISSION-PACKET.md',
   'scripts/finalize-store-submission-artifacts.mjs',
   'scripts/inspect-store-artifacts.mjs',
+  'scripts/lib/private-release-approval-v2.mjs',
   'scripts/lib/safe-zip.py',
   'scripts/lib/seoul-launch-deployment.mjs',
   'scripts/lib/store-artifact-inspector.mjs',
+  'scripts/lib/store-release-verification.mjs',
   'scripts/lib/store-submission-validator.mjs',
+  'scripts/lib/strict-json.mjs',
   'scripts/prepare-seoul-launch-deployment.mjs',
   'scripts/publish-seoul-launch-deployment.mjs',
   'scripts/test-card-asset-rights-validator.mjs',
@@ -355,7 +371,9 @@ const forbiddenExactPaths = new Set([
   'scripts/test-seoul-launch-deployment-db.mjs',
   'scripts/test-store-submission-validator.mjs',
   'scripts/validate-card-asset-rights.mjs',
+  'scripts/validate-private-release-approval-v2.mjs',
   'scripts/validate-seoul-launch-content.mjs',
+  'scripts/validate-store-release.mjs',
   'scripts/validate-store-submission-packet.mjs',
 ]);
 
@@ -389,6 +407,17 @@ export function forbiddenPathReason(filePath) {
     return 'local release evidence directory';
   }
   return null;
+}
+
+export function publicBinaryReason(filePath, buffer) {
+  if (!buffer.includes(0)) {
+    return null;
+  }
+  const normalized = filePath.replaceAll('\\', '/');
+  if (Object.hasOwn(approvedPublicImages, normalized)) {
+    return null;
+  }
+  return 'unapproved binary payload';
 }
 
 export function scanText(text) {

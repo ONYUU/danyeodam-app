@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   forbiddenPathReason,
+  publicBinaryReason,
   publicStaticImageReason,
   scanText,
 } from './lib/public-repo-safety.mjs';
@@ -39,6 +40,10 @@ for (const relativePath of files) {
   const imageReason = publicStaticImageReason(relativePath, buffer);
   if (imageReason !== null) {
     findings.push(`${relativePath}: ${imageReason}`);
+  }
+  const binaryReason = publicBinaryReason(relativePath, buffer);
+  if (binaryReason !== null) {
+    findings.push(`${relativePath}: ${binaryReason}`);
   }
   if (buffer.includes(0)) {
     continue;

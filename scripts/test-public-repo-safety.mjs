@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import {
   approvedPublicImages,
   forbiddenPathReason,
+  publicBinaryReason,
   publicStaticImageReason,
   scanText,
 } from './lib/public-repo-safety.mjs';
@@ -29,11 +30,70 @@ test('forbidden credential and artifact paths are rejected', () => {
   assert.equal(forbiddenPathReason('.npmrc'), 'credential-bearing filename');
   assert.equal(forbiddenPathReason('config/service-account-prod.json'), 'service-account credential filename');
   assert.equal(forbiddenPathReason('backup/production.dump'), 'credential or release-artifact extension');
+  assert.equal(forbiddenPathReason('.netrc'), 'credential-bearing filename');
+  assert.equal(forbiddenPathReason('.pypirc'), 'credential-bearing filename');
+  assert.equal(forbiddenPathReason('.sentryclirc'), 'credential-bearing filename');
+  assert.equal(forbiddenPathReason('.direnv/secrets'), 'private rights, field, or store evidence path');
+  assert.equal(forbiddenPathReason('evidence/release.zip'), 'credential or release-artifact extension');
+  assert.equal(forbiddenPathReason('credentials/vault.kdbx'), 'credential or release-artifact extension');
   assert.equal(forbiddenPathReason('data/local.sqlite'), 'credential or release-artifact extension');
   assert.equal(forbiddenPathReason('assets/card-assets/source.png'), 'private rights, field, or store evidence path');
   assert.equal(forbiddenPathReason('content/seoul-launch/approval.json'), 'private rights, field, or store evidence path');
   assert.equal(forbiddenPathReason('docs/REVIEWER-OPERATIONS.md'), 'private operations or release-evidence file');
+  for (const privateReleaseValidator of [
+    'scripts/lib/private-release-approval-v2.mjs',
+    'scripts/lib/store-release-verification.mjs',
+    'scripts/lib/strict-json.mjs',
+    'scripts/validate-private-release-approval-v2.mjs',
+    'scripts/validate-store-release.mjs',
+  ]) {
+    assert.equal(
+      forbiddenPathReason(privateReleaseValidator),
+      'private operations or release-evidence file',
+      privateReleaseValidator,
+    );
+  }
   assert.equal(forbiddenPathReason('.env.example'), null);
+});
+
+test('only the frozen public images may contain binary NUL bytes', () => {
+  const approvedBuffer = readFileSync(path.join(root, 'apps/mobile/assets/images/favicon.png'));
+  assert.equal(
+    publicBinaryReason('apps/mobile/assets/images/favicon.png', approvedBuffer),
+    null,
+  );
+  assert.equal(
+    publicBinaryReason('docs/opaque-payload', Buffer.from([0x01, 0x00, 0x02])),
+    'unapproved binary payload',
+  );
+  assert.equal(publicBinaryReason('docs/plain.txt', Buffer.from('public text', 'utf8')), null);
+});
+
+test('GitHub workflows pin actions and discard checkout credentials', () => {
+  for (const workflowPath of [
+    '.github/workflows/ci.yml',
+    '.github/workflows/mobile-ci.yml',
+    '.github/workflows/public-security.yml',
+    '.github/workflows/release-preflight.yml',
+  ]) {
+    const source = readFileSync(path.join(root, workflowPath), 'utf8');
+    assert.doesNotMatch(source, /pull_request_target:/u, workflowPath);
+
+    const actionReferences = [...source.matchAll(/^\s*- uses:\s+([^\s#]+)/gmu)]
+      .map((match) => match[1]);
+    assert.ok(actionReferences.length > 0, `${workflowPath} must use at least one action`);
+    for (const reference of actionReferences) {
+      assert.match(reference, /@[0-9a-f]{40}$/u, `${workflowPath}: ${reference}`);
+    }
+
+    const checkoutCount = actionReferences.filter((reference) => (
+      reference.startsWith('actions/checkout@')
+    )).length;
+    const hardenedCheckoutCount = [...source.matchAll(
+      /- uses: actions\/checkout@[0-9a-f]{40}[^\n]*\n\s+with:\n\s+persist-credentials: false/gmu,
+    )].length;
+    assert.equal(hardenedCheckoutCount, checkoutCount, workflowPath);
+  }
 });
 
 test('high-risk credential material and user paths are detected', () => {
