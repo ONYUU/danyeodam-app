@@ -22,14 +22,56 @@ const easConfig = JSON.parse(
 const packageConfig = JSON.parse(
   readFileSync(join(process.cwd(), 'package.json'), 'utf8'),
 ) as { packageManager?: string; overrides?: Record<string, string> };
+const releaseToolPackage = JSON.parse(
+  readFileSync(join(process.cwd(), '..', '..', 'tools', 'eas-cli', 'package.json'), 'utf8'),
+) as {
+  allowScripts?: Record<string, boolean>;
+  devDependencies?: Record<string, string>;
+  engines?: { node?: string };
+  packageManager?: string;
+  private?: boolean;
+};
+const releaseToolLock = JSON.parse(
+  readFileSync(join(process.cwd(), '..', '..', 'tools', 'eas-cli', 'package-lock.json'), 'utf8'),
+) as {
+  packages?: Record<string, { integrity?: string; resolved?: string; version?: string }>;
+};
 
 describe('EAS toolchain policy', () => {
   it('pins the exact CLI and requires a committed source tree', () => {
     expect(easConfig.cli).toMatchObject({
-      version: '21.8.0',
+      version: '22.2.0',
       requireCommit: true,
     });
     expect(packageConfig.packageManager).toBe('npm@11.16.0');
+  });
+
+  it('runs the lockfile-bound EAS CLI without a registry-time install', () => {
+    const typedPackage = packageConfig as typeof packageConfig & {
+      allowScripts?: Record<string, boolean>;
+      scripts?: Record<string, string>;
+    };
+    expect(releaseToolPackage).toMatchObject({
+      private: true,
+      packageManager: 'npm@11.16.0',
+      engines: { node: '>=24.19.0 <25' },
+      devDependencies: { 'eas-cli': '22.2.0' },
+    });
+    expect(typedPackage.scripts?.['release:build']).toBe(
+      'npm run release:preflight && npm --prefix ../../tools/eas-cli exec --offline -- eas build --profile production --platform all',
+    );
+    expect(typedPackage.allowScripts).toEqual({
+      'fsevents@2.3.3': true,
+      'unrs-resolver@1.12.2': true,
+    });
+    expect(releaseToolPackage.allowScripts).toEqual({
+      'dtrace-provider': false,
+    });
+    expect(releaseToolLock.packages?.['node_modules/eas-cli']).toMatchObject({
+      version: '22.2.0',
+      resolved: 'https://registry.npmjs.org/eas-cli/-/eas-cli-22.2.0.tgz',
+    });
+    expect(releaseToolLock.packages?.['node_modules/eas-cli']?.integrity).toMatch(/^sha512-/u);
   });
 
   it('pins Node and enables Corepack in every build profile', () => {

@@ -5,11 +5,11 @@ App Store와 Google Play 제출을 목표로 하는 Expo React Native 앱입니�
 ## 기준 버전
 
 - Node.js `24.19.0`
-- Expo SDK `~57.0.13`
+- Expo SDK `~57.0.15`
 - React Native `0.86.2`
 - React `19.2.3`
 - TypeScript `~6.0.3`
-- EAS CLI `21.8.0`
+- EAS CLI `22.2.0`
 
 앱 식별자는 iOS와 Android 모두 `kr.danyeodam.app`, 딥링크 scheme은 `danyeodam`입니다.
 
@@ -54,6 +54,14 @@ npm run release:build
 production 설정을 확인합니다. 이 성공은 카드 권리, 서울 현장검증, 번역, 심사계정,
 스토어 선언 또는 서명 산출물의 승인을 의미하지 않습니다.
 
+[Expo SDK 57 공식 기준](https://docs.expo.dev/versions/v57.0.0/)과 clean prebuild 결과는
+Android compile/target API 36 및 iOS 16.4 배포 기준이다. 따라서 2026년 8월 31일부터의
+[Google Play API 36 제출 요건](https://support.google.com/googleplay/android-developer/answer/11926878?hl=ko)에는
+부합한다. Expo가 SDK 57에 명시한 Xcode 기준도 26.4 이상으로 Apple의 2026년 4월
+28일 이후 [Xcode 26·iOS 26 SDK 제출 요건](https://developer.apple.com/news/upcoming-requirements/)을
+충족한다. 다만 최종 서명 AAB의 target API와 EAS iOS 빌드 로그의 실제 Xcode/SDK
+버전은 제출 직전에 다시 확인해야 한다.
+
 `release:build`의 EAS production 단계는 저장소 밖에서 주입한
 `DANYEODAM_RELEASE_APPROVAL_FILE`을 추가로 검사합니다. 승인파일은 정확한 빌드 Git SHA와
 비공개 카드 권리·현장·스토어 사전검증 산출물의 SHA-256과 현재 production
@@ -79,7 +87,7 @@ GitHub Actions의 `Public code release preflight` 수동 실행도 공개 코드
 - 개발 및 E2E는 로컬 API 기본값을 사용할 수 있습니다.
 - preview와 production은 공개 HTTPS `EXPO_PUBLIC_API_BASE_URL`과 `EXPO_PUBLIC_SUPABASE_URL`, Supabase publishable key, 쉼표로 구분한 exact-origin `EXPO_PUBLIC_POLICY_ALLOWED_ORIGINS`가 없으면 설정 단계에서 실패합니다. localhost·사설 IP·문서용 IP·`.invalid/.example/.test/.localhost`·`example.com/net/org`·query·fragment를 예외 없이 거부하고 `sb_secret_`·service-role key를 앱에 포함하지 못하게 차단합니다.
 - `config:assert:production`과 `export:production:verify`는 실제 네트워크 요청 없이 공개 형식의 `release-fixture` 호스트로 구조만 검증합니다. 실제 EAS를 위한 예약 호스트 우회 플래그는 존재하지 않습니다.
-- EAS CLI, Node, npm은 각각 `21.8.0`, `24.19.0`, `11.16.0`으로 고정합니다. 각 프로필은 Corepack을 사용하고 커밋되지 않은 소스로 빌드하지 않습니다.
+- EAS CLI, Node, npm은 각각 `22.2.0`, `24.19.0`, `11.16.0`으로 고정합니다. EAS CLI는 Expo 앱·웹 의존성에 넣지 않고 `tools/eas-cli` 전용 release-tool lockfile에 격리하며, 그 잠금본을 `--offline`으로 실행해 빌드 시점의 동적 패키지 설치를 금지합니다. 각 프로필은 Corepack을 사용하고 커밋되지 않은 소스로 빌드하지 않습니다.
 - EAS 프로젝트 연결, Apple Team, Android signing, 운영 API 도메인은 후속 보안 설정에서 주입해야 합니다.
 
 ## 권한 원칙
@@ -173,9 +181,12 @@ GitHub Actions의 `Public code release preflight` 수동 실행도 공개 코드
 
 ## 의존성 보안 추적
 
-2026-08-15 기준 고정 lockfile에 대해 `npm audit --omit=dev`는 Expo Metro 빌드 툴체인의
-전이 의존성 `image-size` 1.2.1에서 high 14건을 보고합니다. 현재 발행된
-`image-size` 2.0.2까지도 해당 ICNS/JXL/HEIF 무한 루프 권고의 수정 버전이 없습니다.
+2026-08-21 기준 Expo SDK 57.0.15 고정 lockfile에 대해 `npm audit --omit=dev`는 Expo
+Metro 빌드 툴체인의 전이 의존성 `image-size` 1.2.1에서 high 8건을 보고합니다. 이는
+두 개의 동일 upstream DoS 권고가 의존성 그래프에 전파된 수치입니다. Metro 소스에는
+제한된 파서 대체가 병합됐고 Metro 0.84.5에는 해당 의존성이 제거됐습니다. 다만 현재
+Expo SDK 57.0.15의 호환 의존성은 Metro 0.84.4를 고정하므로 아직 이 수정판을 사용하지
+않습니다. Expo 호환성 검증 없이 Metro만 임의 재정의하지 않습니다.
 이 패키지는 배포된 앱 런타임이 아니라 Metro가 저장소의 신뢰된 정적 자산을 빌드할 때만
 사용합니다. 외부 업로드 파일을 Metro에 전달하지 않으며, 권리 승인된 고정 자산만 빌드합니다.
 따라서 upstream 수정 버전이 나올 때까지 빌드 범위 위험으로 기록하되, 신뢰되지 않은
@@ -184,8 +195,14 @@ GitHub Actions의 `Public code release preflight` 수동 실행도 공개 코드
 `xcode` 빌드 의존성이 가져오던 취약한 `uuid` 7.0.3은 npm override로 호환되는
 11.1.1로 상향했습니다. 해당 경로는 Expo native config/prebuild를 다시 검증합니다.
 
+2026-08-21 기준 `tools/eas-cli`의 별도 release-tool 감사에는 최신 `eas-cli` 22.2.0이 정확히
+고정한 전이 의존성 경고가 추가로 존재합니다. 동적 `npx`로 되돌려 경고를 숨기거나 npm이
+제안하는 구형 EAS CLI로 강제 다운그레이드하지 않습니다. 출시 명령은 lockfile에 결속된
+CLI를 trusted release checkout에서만 `--offline`으로 실행하고, EAS 인증은 최소 권한의
+외부 비밀 저장소를 사용하며, 공식 패치 릴리스를 계속 추적합니다.
+
 - 매 Expo SDK 57 패치 릴리스와 월 1회 정기 점검 시 `npm audit --omit=dev` 및 Expo Doctor를 재실행합니다.
-- 호환되는 upstream 패치가 나오면 lockfile을 갱신하고 전체 native config·export 검증을 다시 수행합니다.
+- Expo 호환 의존성이 수정판을 채택하면 lockfile을 갱신하고 전체 native config·export 검증을 다시 수행합니다.
 - critical 취약점 또는 앱 런타임에 직접 도달 가능한 취약점이 확인되면 제출 차단 항목으로 승격합니다.
 
 ## 제출 전 남은 외부 설정

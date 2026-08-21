@@ -7,6 +7,10 @@
   "engines": {
     "node": ">=24.19.0 <25"
   },
+  "allowScripts": {
+    "fsevents@2.3.3": true,
+    "unrs-resolver@1.12.2": true
+  },
   "scripts": {
     "start": "expo start",
     "start:clear": "expo start --clear",
@@ -25,28 +29,28 @@
     "eas-build-pre-install": "node ./scripts/assert-eas-release-gate.mjs",
     "release:preflight": "npm --prefix ../.. run verify:public-source && npm run check && npm run config:assert:production",
     "export:production": "npm run release:preflight && npm run export:production:verify",
-    "release:build": "npm run release:preflight && npx --yes eas-cli@21.8.0 build --profile production --platform all",
+    "release:build": "npm run release:preflight && npm --prefix ../../tools/eas-cli exec --offline -- eas build --profile production --platform all",
     "check": "npm run typecheck && npm run lint && npm test && npm run doctor && npm run assets:assert"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.112.3",
-    "expo": "~57.0.13",
-    "expo-build-properties": "~57.0.11",
+    "expo": "~57.0.15",
+    "expo-build-properties": "~57.0.13",
     "expo-clipboard": "~57.0.1",
     "expo-constants": "~57.0.11",
     "expo-crypto": "~57.0.1",
-    "expo-dev-client": "~57.0.12",
+    "expo-dev-client": "~57.0.14",
     "expo-file-system": "~57.0.4",
     "expo-haptics": "~57.0.1",
-    "expo-image-manipulator": "~57.0.10",
-    "expo-image-picker": "~57.0.10",
-    "expo-linking": "~57.0.6",
+    "expo-image-manipulator": "~57.0.12",
+    "expo-image-picker": "~57.0.12",
+    "expo-linking": "~57.0.7",
     "expo-localization": "~57.0.1",
-    "expo-location": "~57.0.10",
-    "expo-router": "~57.0.13",
+    "expo-location": "~57.0.12",
+    "expo-router": "~57.0.15",
     "expo-screen-capture": "~57.0.2",
     "expo-secure-store": "~57.0.1",
-    "expo-splash-screen": "~57.0.6",
+    "expo-splash-screen": "~57.0.7",
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.2",
     "parse5": "8.0.1",
@@ -59,11 +63,12 @@
     "react-native-web": "~0.21.0"
   },
   "devDependencies": {
+    "@expo/plist": "0.8.1",
     "@types/node": "24.13.3",
     "@types/react": "~19.2.2",
     "eslint": "9.39.5",
     "eslint-config-expo": "~57.0.1",
-    "expo-doctor": "1.20.1",
+    "expo-doctor": "1.20.2",
     "typescript": "~6.0.3",
     "vitest": "4.1.10"
   },
