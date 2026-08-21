@@ -32,6 +32,8 @@
     "api:test:account-deletion": "node scripts/test-account-deletion-e2e.mjs",
     "api:test:reviewer-access": "node scripts/test-reviewer-access-e2e.mjs",
     "ci:remap-supabase-ports": "node scripts/remap-supabase-ci-ports.mjs",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop --no-backup",
     "db:reset": "supabase db reset --local --yes",
     "db:test": "supabase test db --local",
     "db:test:concurrency": "node scripts/test-db-concurrency.mjs",

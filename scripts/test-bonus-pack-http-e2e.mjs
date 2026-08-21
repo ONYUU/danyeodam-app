@@ -43,7 +43,7 @@ function assertPort(port) {
 function readLocalSupabaseEnvironment() {
   assert(
     process.env.DANYEODAM_BONUS_PACK_E2E_ALLOW_DISPOSABLE === "true",
-    "bonus-pack HTTP E2E publishes immutable synthetic pool, policy, card, and Storage fixtures; set DANYEODAM_BONUS_PACK_E2E_ALLOW_DISPOSABLE=true only for a disposable stack, and the caller must run `npx supabase stop --no-backup` afterward",
+    "bonus-pack HTTP E2E publishes immutable synthetic pool, policy, card, and Storage fixtures; set DANYEODAM_BONUS_PACK_E2E_ALLOW_DISPOSABLE=true only for a disposable stack, and the caller must run `corepack npm run db:stop` afterward",
   );
   const output = execFileSync(
     process.platform === "win32" ? "npx.cmd" : "npx",
@@ -999,6 +999,6 @@ try {
     );
   }
   console.log(
-    "Bonus pack HTTP E2E passed; immutable synthetic pool, policy, card, and Storage residues remain by design, so the caller must run `npx supabase stop --no-backup`",
+    "Bonus pack HTTP E2E passed; immutable synthetic pool, policy, card, and Storage residues remain by design, so the caller must run `corepack npm run db:stop`",
   );
 }

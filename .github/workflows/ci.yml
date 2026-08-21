@@ -55,13 +55,13 @@ jobs:
           test "$(corepack npm --version)" = "11.16.0"
       - run: corepack npm ci --strict-allow-scripts
       - run: npm run ci:remap-supabase-ports
-      - run: npx supabase start
+      - run: corepack npm run db:start
       - run: npm run db:test:location-upgrade
       - run: npm run db:test:account-deletion-upgrade
       - run: npm run db:test:reviewer-upgrade
       - run: npm run db:test:bonus-pack-upgrade
       - if: always()
-        run: npx supabase stop --no-backup
+        run: corepack npm run db:stop
 
   database:
     runs-on: ubuntu-latest
@@ -81,7 +81,7 @@ jobs:
           test "$(corepack npm --version)" = "11.16.0"
       - run: corepack npm ci --strict-allow-scripts
       - run: npm run ci:remap-supabase-ports
-      - run: npx supabase start
+      - run: corepack npm run db:start
       - run: npm run db:reset
       - run: npm run db:test
       - run: npm run db:test:concurrency
@@ -101,4 +101,4 @@ jobs:
       - run: npm run db:lint
       - run: npm run db:advisors
       - if: always()
-        run: npx supabase stop --no-backup
+        run: corepack npm run db:stop

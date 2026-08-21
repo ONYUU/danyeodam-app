@@ -114,6 +114,9 @@ test('CI enforces the pinned npm install policy and the lockfile-bound EAS CLI',
   assert.equal((ci.match(/corepack npm ci --strict-allow-scripts/gu) ?? []).length, 3);
   assert.equal((ci.match(/corepack npm --version\)" = "11\.16\.0"/gu) ?? []).length, 3);
   assert.doesNotMatch(ci, /^\s*- run: npm ci\s*$/gmu);
+  assert.doesNotMatch(ci, /\bnpx\s+supabase\b/u);
+  assert.equal((ci.match(/corepack npm run db:start/gu) ?? []).length, 2);
+  assert.equal((ci.match(/corepack npm run db:stop/gu) ?? []).length, 2);
 
   for (const [label, workflow] of [
     ['mobile CI', mobileCi],

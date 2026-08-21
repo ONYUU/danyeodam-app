@@ -42,7 +42,7 @@ CI는 `VERCEL_ENV=preview|production`이 아닐 때만 이 배포 검증을 건�
 fixture로 만든다. 해당 감사 행은 설계상 삭제하지 않으므로 지속 사용하는 로컬 DB에서는
 실행하지 않는다. API와 DB가 모두 563xx인 격리 스택에서만
 `DANYEODAM_BONUS_PACK_E2E_ALLOW_DISPOSABLE=true`를 명시해 실행하며, 성공·실패와
-관계없이 호출자가 반드시 `npx supabase stop --no-backup`으로 스택과 볼륨을 폐기한다.
+관계없이 호출자가 반드시 `corepack npm run db:stop`으로 스택과 볼륨을 폐기한다.
 553xx는 Jubilee Worship 보호를 위해 이 명령에서 항상 거부한다.
 
 CI는 시작 전에 `npm run ci:remap-supabase-ports`로 여섯 개 서비스 포트와 shadow
