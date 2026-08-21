@@ -187,6 +187,6 @@ server `acquire_success`를 exact acquisition→fact에 연결한다. 이 방어
   web age cookie를 요구하지 않는다. 공개 web의 resolve·photo·report는 기존 signed
   age cookie를 유지하며 미존재·변조·만료 시 `AGE_ATTESTATION_REQUIRED`다.
 - 모바일 age gate는 통과 전 일반 AuthProvider를 mount하지 않되, 저장된 세션으로
-  이용내역·정정·철회·계정삭제만 수행하는 제한된 privacy-rights 경로를 추가해야 한다.
+  이용내역·정정·철회·계정삭제만 수행하는 제한된 privacy-rights 경로를 제공한다.
 - 스테이징 scheduler 호출, Storage 실제 삭제, backlog 경보 수신, field spot 현장
   검증 증거는 아직 확인 필요다.
