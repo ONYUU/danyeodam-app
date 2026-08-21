@@ -17,6 +17,8 @@ import { CollectionItemCard } from '@/components/collection-item-card';
 import { CollectionStats } from '@/components/collection-stats';
 import { ReadFailurePanel } from '@/components/read-failure-panel';
 import { ReadStatePanel } from '@/components/read-state-panel';
+import { BonusPackEntryCard } from '@/features/bonus-pack/bonus-pack-entry-card';
+import { InventoryEntryCard } from '@/features/bonus-pack/inventory-entry-card';
 import { useCollection } from '@/features/read/use-collection';
 import { useI18n } from '@/i18n/locale-provider';
 import { colors, radius, spacing } from '@/theme/tokens';
@@ -120,7 +122,7 @@ export default function CollectionScreen() {
         ListEmptyComponent={<View style={styles.empty}>{emptyContent}</View>}
         ListFooterComponent={footer}
         ListHeaderComponent={(
-          <View>
+          <View style={styles.header}>
             <BrandMark />
             <View style={styles.headingRow}>
               <View style={styles.headingCopy}>
@@ -140,7 +142,15 @@ export default function CollectionScreen() {
                 </Pressable>
               ) : null}
             </View>
+            <BonusPackEntryCard />
+            <InventoryEntryCard />
             {state.status === 'ready' ? <CollectionStats stats={state.stats} /> : null}
+            <View style={styles.visitsHeading}>
+              <Text accessibilityRole="header" style={styles.visitsTitle}>
+                {t('collection.visitsTitle')}
+              </Text>
+              <Text style={styles.visitsBody}>{t('collection.visitsBody')}</Text>
+            </View>
           </View>
         )}
         contentContainerStyle={styles.content}
@@ -168,12 +178,15 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: spacing.xxl,
   },
+  header: {
+    gap: spacing.md,
+  },
   headingRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.md,
     paddingTop: spacing.xxl,
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.sm,
   },
   headingCopy: {
     flex: 1,
@@ -225,6 +238,21 @@ const styles = StyleSheet.create({
   },
   footerPanel: {
     marginTop: spacing.lg,
+  },
+  visitsHeading: {
+    gap: spacing.xs,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
+  },
+  visitsTitle: {
+    color: colors.ink,
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  visitsBody: {
+    color: colors.mutedInk,
+    fontSize: 13,
+    lineHeight: 20,
   },
   pressed: {
     opacity: 0.72,

@@ -17,6 +17,7 @@ const spotId = "00000000-0000-4000-8000-000000000101";
 const cardId = "00000000-0000-4000-8000-000000000102";
 const acquisitionId = "00000000-0000-4000-8000-000000000103";
 const idempotencyKey = "00000000-0000-4000-8000-000000000201";
+const bonusPackId = "00000000-0000-4000-8000-000000000301";
 
 const input: AcquireInput = {
   spot_id: spotId,
@@ -125,6 +126,7 @@ describe("acquireCard", () => {
       publicGateOpen: false,
       expectedSpotUpdatedAt: "2026-08-08T00:00:00.000Z",
       expectedUserId: userId,
+      bonusPackIssuanceScope: "off",
     });
     expect(JSON.stringify(data.getContext.mock.calls)).not.toContain("37.5665");
     expect(JSON.stringify(data.commit.mock.calls)).not.toContain("37.5665");
@@ -145,6 +147,35 @@ describe("acquireCard", () => {
     expect(outcome.body.acquisition.id).toBe(acquisitionId);
     expect(data.commit).not.toHaveBeenCalled();
     expect(data.recordFailure).not.toHaveBeenCalled();
+  });
+
+  it("adds only the sealed daily bonus envelope and forwards the issuance scope", async () => {
+    const bonusPack = {
+      id: bonusPackId,
+      status: "sealed" as const,
+      issued_at: "2026-08-08T01:00:00.000Z",
+      date_kst: "2026-08-08",
+    };
+    const data = repository(readyContext(), {
+      status: "created",
+      acquisition,
+      card,
+      bonus_pack: bonusPack,
+    });
+
+    const outcome = await acquireCard(
+      input,
+      { authUserId, publicGateOpen: true, bonusPackIssuanceScope: "participants" },
+      { repository: data },
+    );
+
+    expect(outcome.body.bonus_pack).toEqual(bonusPack);
+    expect(JSON.stringify(outcome.body.bonus_pack)).not.toMatch(
+      /rarity|card|result|guarantee/u,
+    );
+    expect(data.commit).toHaveBeenCalledWith(expect.objectContaining({
+      bonusPackIssuanceScope: "participants",
+    }));
   });
 
   it("rejects low accuracy before distance and records only the allowed code", async () => {

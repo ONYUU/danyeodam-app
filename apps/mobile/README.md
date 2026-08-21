@@ -5,11 +5,11 @@ App Store와 Google Play 제출을 목표로 하는 Expo React Native 앱입니�
 ## 기준 버전
 
 - Node.js `24.19.0`
-- Expo SDK `~57.0.13`
+- Expo SDK `~57.0.15`
 - React Native `0.86.2`
 - React `19.2.3`
 - TypeScript `~6.0.3`
-- EAS CLI `21.8.0`
+- EAS CLI `22.2.0`
 
 앱 식별자는 iOS와 Android 모두 `kr.danyeodam.app`, 딥링크 scheme은 `danyeodam`입니다.
 
@@ -54,13 +54,28 @@ npm run release:build
 production 설정을 확인합니다. 이 성공은 카드 권리, 서울 현장검증, 번역, 심사계정,
 스토어 선언 또는 서명 산출물의 승인을 의미하지 않습니다.
 
+[Expo SDK 57 공식 기준](https://docs.expo.dev/versions/v57.0.0/)과 clean prebuild 결과는
+Android compile/target API 36 및 iOS 16.4 배포 기준이다. 따라서 2026년 8월 31일부터의
+[Google Play API 36 제출 요건](https://support.google.com/googleplay/android-developer/answer/11926878?hl=ko)에는
+부합한다. Expo가 SDK 57에 명시한 Xcode 기준도 26.4 이상으로 Apple의 2026년 4월
+28일 이후 [Xcode 26·iOS 26 SDK 제출 요건](https://developer.apple.com/news/upcoming-requirements/)을
+충족한다. 다만 최종 서명 AAB의 target API와 EAS iOS 빌드 로그의 실제 Xcode/SDK
+버전은 제출 직전에 다시 확인해야 한다.
+
 `release:build`의 EAS production 단계는 저장소 밖에서 주입한
 `DANYEODAM_RELEASE_APPROVAL_FILE`을 추가로 검사합니다. 승인파일은 정확한 빌드 Git SHA와
-비공개 카드 권리·현장·스토어 사전검증 산출물의 SHA-256을 포함해야 하며, 누락·불일치 시
+비공개 카드 권리·현장·스토어 사전검증 산출물의 SHA-256과 현재 production
+API·Supabase·publishable-key fingerprint·정렬된 policy origin·앱 버전·source SHA·
+승인자가 기대한 서버 보너스 rollout scope의 통합 SHA-256을 포함해야 하며,
+누락·불일치 시
 빌드를 중단합니다. 형식과 보안 경계는
 [`docs/PRIVATE-RELEASE-ATTESTATION.md`](../../docs/PRIVATE-RELEASE-ATTESTATION.md)에 정리돼
 있습니다. 서명 IPA/AAB와 심볼의 최종 검사는 비공개 출시 파이프라인에서 수행하며,
 해당 자료와 도구는 이 공개 저장소에 포함하지 않습니다.
+
+`expectedServerBonusPackIssuanceScope`는 승인자의 기대값을 해시에 묶는 필드이며
+앱 번들에 포함되지 않습니다. EAS는 Vercel의 실제 server-only env를 검증하지
+못하므로 출시 직전 두 값을 별도로 대조해야 합니다.
 
 GitHub Actions의 `Public code release preflight` 수동 실행도 공개 코드만 검증합니다.
 따라서 그 workflow의 성공을 스토어 제출 승인으로 사용하면 안 됩니다.
@@ -70,8 +85,9 @@ GitHub Actions의 `Public code release preflight` 수동 실행도 공개 코드
 `eas.json`은 `development`, `e2e`, `preview`, `production` 네 프로필만 정의합니다. 제출 설정과 실제 자격 증명은 포함하지 않습니다.
 
 - 개발 및 E2E는 로컬 API 기본값을 사용할 수 있습니다.
-- preview와 production은 공개 HTTPS `EXPO_PUBLIC_API_BASE_URL`과 `EXPO_PUBLIC_SUPABASE_URL`, Supabase publishable key, 쉼표로 구분한 exact-origin `EXPO_PUBLIC_POLICY_ALLOWED_ORIGINS`가 없으면 설정 단계에서 실패합니다. localhost·사설 IP·query·fragment를 거부하고 `sb_secret_`·service-role key를 앱에 포함하지 못하게 차단합니다.
-- EAS CLI, Node, npm은 각각 `21.8.0`, `24.19.0`, `11.16.0`으로 고정합니다. 각 프로필은 Corepack을 사용하고 커밋되지 않은 소스로 빌드하지 않습니다.
+- preview와 production은 공개 HTTPS `EXPO_PUBLIC_API_BASE_URL`과 `EXPO_PUBLIC_SUPABASE_URL`, Supabase publishable key, 쉼표로 구분한 exact-origin `EXPO_PUBLIC_POLICY_ALLOWED_ORIGINS`가 없으면 설정 단계에서 실패합니다. localhost·사설 IP·문서용 IP·`.invalid/.example/.test/.localhost`·`example.com/net/org`·query·fragment를 예외 없이 거부하고 `sb_secret_`·service-role key를 앱에 포함하지 못하게 차단합니다.
+- `config:assert:production`과 `export:production:verify`는 실제 네트워크 요청 없이 공개 형식의 `release-fixture` 호스트로 구조만 검증합니다. 실제 EAS를 위한 예약 호스트 우회 플래그는 존재하지 않습니다.
+- EAS CLI, Node, npm은 각각 `22.2.0`, `24.19.0`, `11.16.0`으로 고정합니다. EAS CLI는 Expo 앱·웹 의존성에 넣지 않고 `tools/eas-cli` 전용 release-tool lockfile에 격리하며, 그 잠금본을 `--offline`으로 실행해 빌드 시점의 동적 패키지 설치를 금지합니다. 각 프로필은 Corepack을 사용하고 커밋되지 않은 소스로 빌드하지 않습니다.
 - EAS 프로젝트 연결, Apple Team, Android signing, 운영 API 도메인은 후속 보안 설정에서 주입해야 합니다.
 
 ## 권한 원칙
@@ -94,6 +110,7 @@ GitHub Actions의 `Public code release preflight` 수동 실행도 공개 코드
 - native에서 세션은 iOS Keychain·Android Keystore 기반 `expo-secure-store`에 UTF-8 청크로 나누어 저장합니다. 세션을 로그에 기록하지 않습니다.
 - 이메일 연결을 시작할 때 `expo-crypto`의 native CSPRNG와 SHA-256으로 flow별 S256 PKCE를 만듭니다. verifier·원래 Auth 사용자 ID·생성 시각만 SecureStore에 최대 65분 보관하고, 서버에는 challenge와 소문자 UUID v4 flow ID만 전송합니다.
 - 이메일 확인 반환 경로는 `danyeodam://auth/callback`으로 고정합니다. 앱은 같은 기기의 일회용 verifier와 일치하는 `code`·`sb_flow_id`만 Supabase Auth에 직접 교환하고, 응답 Auth 사용자 ID가 요청을 시작한 사용자와 같을 때만 세션을 채택합니다. 다른 scheme·host·path, 알 수 없는 query, 중복 처리, implicit access/refresh token fragment는 거부합니다.
+- 서버 preview·production 배포도 위 callback과 정확히 같아야 합니다. 현재 공개 Next 서버에는 HTTPS callback handler가 없고 native universal link도 설정하지 않았으므로 배포 gate는 HTTPS 대체 경로를 허용하지 않습니다.
 - 스토어 심사자는 `danyeodam://reviewer-login`으로만 진입합니다. 이메일·비밀번호 세션 생성 후 서버의 `/api/me/access` 결과가 `store_reviewer`가 아니면 로컬 세션을 즉시 제거합니다.
 - 심사 계정도 현장 `field` 위치 판정을 우회하지 않습니다. 심사 픽스처는 서버가 지급한 `retro`로만 구성합니다.
 - 공통 API 클라이언트는 보호 요청에만 Bearer 세션을 첨부하고 10초 타임아웃을 적용합니다. 서버가 401을 반환하면 철회된 바인딩으로 보고 로컬 세션을 즉시 제거하며, 토큰·요청 본문·서버 진단 문구를 오류 객체에 보관하지 않습니다.
@@ -109,6 +126,29 @@ GitHub Actions의 `Public code release preflight` 수동 실행도 공개 코드
 
 앱 UI와 iOS foreground 위치 권한 문구는 `ko`, `en`, `ja`, `zh-Hans`, `zh-Hant`, `vi`를 제공합니다. 지원하지 않는 기기 언어는 영어로 대체합니다. 설정에서 선택한 언어는 native SecureStore와 웹 localStorage에 지원 locale 식별자만 저장하고 재실행 시 복원합니다.
 
+## 일일 보너스 팩
+
+- 실제 방문 성공 화면의 일반카드는 기존 방문 기록으로 즉시 유지하고, 해당 응답에
+  봉인된 일일 팩이 포함된 경우에만 별도 팩 진입 버튼을 표시합니다.
+- 카드 탭은 미개봉 팩, 팩 카드 보유 수량, 실제 방문 기록을 분리합니다. 팩 카드는
+  카드·등급별 수량으로 합치며 방문 통계를 늘리지 않습니다.
+- 개봉 전에는 `일반 80% / 특별 20%`, `4회 연속 일반 뒤 다음 특별 보장`, 하루 1팩,
+  무기한 보관, 무결제·무광고·무재뽑기·무거래 규칙을 6개 언어로 표시합니다.
+- 개봉 결과는 서버 응답 이후에만 한 번의 비점멸 전환과 선택 가능한 성공 진동으로
+  공개합니다. 네트워크 실패 시 화면은 봉인 상태를 유지하고 동일한 소문자 UUID v4
+  요청 번호를 재사용합니다. 기기의 동작 줄이기 설정에서는 전환을 생략하며 음악과
+  효과음은 포함하지 않습니다.
+- 일반 카드 이미지만 공개 `/api/card-assets/{id}`를 사용합니다. 특별 카드 parser는
+  `/api/me/special-card-assets/{id}`만 허용하고 현재 세션 Bearer를 React Native Image
+  요청 메모리에만 전달합니다. 보호 응답의 `private, no-store`와 함께 Image 요청도
+  기존 캐시를 사용하지 않습니다. 토큰·원화는 로그나 로컬 설정에 저장하지 않으며
+  공개 카드 경로로의 fallback도 두지 않습니다.
+- 공개 저장소에는 모았소 원본이나 미승인 특별 카드 자산을 포함하지 않습니다.
+  보호 API가 승인·게시한 자산은 완성된 특별 카드 전면으로 간주하고 `contain`으로
+  잘림 없이 그대로 표시합니다. 앱은 카드 내부 프레임을 재구성하지 않고 개봉 시의
+  외부 효과만 추가합니다. 자산이 없거나 승인 전인 상태는 production 카드로
+  오인될 수 없는 React Native primitive 준비 표시로 처리합니다.
+
 ## 정책 및 고객지원 허브
 
 - 연령 확인·익명 세션·reviewer 로그인·계정 상태보다 바깥의 public boundary에서
@@ -120,13 +160,18 @@ GitHub Actions의 `Public code release preflight` 수동 실행도 공개 코드
   `EXPO_PUBLIC_POLICY_ALLOWED_ORIGINS`와 URL origin을 정확히 비교하고 HTTPS,
   credential/hash 부재, 2xx, 무리디렉션, 최종 URL 동일을 확인합니다.
   `credentials: "omit"`과 10초 단일 deadline을 적용하고, 응답 body를 스트리밍하며
-  2MiB를 넘는 즉시 취소합니다. 정책은 다운로드한 바이트의 SHA-256을 대조한
-  뒤 재요청하지 않고 검증된 동일 바이트를 앱 내 텍스트 뷰어에 표시합니다.
+  2MiB를 넘는 즉시 취소합니다. 표시 텍스트는 262,144 UTF-16 코드 단위로 제한하고,
+  HTML은 파싱 전에 256KiB와 마크업 시작 4,096개 상한도 적용합니다. 정책은
+  다운로드한 바이트의 SHA-256을 대조한 뒤 재요청하지 않고, 검증된 동일 응답
+  바이트에서 표준 HTML 파서로 추출·정규화한 텍스트를 앱 내 뷰어에 표시합니다.
+  `application/xhtml+xml`은 XML 전용 파서가 없으므로 거부합니다.
   지원 URL도 동일한 origin·무리디렉션·스트리밍 상한을 통과한 한 번의
-  응답 내용만 앱 안에 표시합니다.
+  응답 내용만 앱 안에 표시하며, 지원 페이지는 SHA-256 고정 대상이 아님을 화면에
+  구분해 안내합니다.
 - 정상 응답은 공개 문서 메타데이터만 로컬에 저장합니다. 서버가 일시적으로
-  unavailable이면 저장된 목록임을 명시하고 새로고침을 제공하며, 실제 문서를 열 때는
-  다시 원격 응답과 hash를 검증하므로 오프라인에서 검증되지 않은 링크를 열지 않습니다.
+  unavailable이면 저장된 목록임을 명시하고 새로고침을 제공하며, 실제 정책 문서를
+  열 때는 다시 원격 응답과 hash를 검증하므로 오프라인에서 검증되지 않은 링크를
+  열지 않습니다.
 - 실제 운영 URL 값과 문서 바이트는 저장소에 넣지 않습니다. production 배포 전에
   서버 `PUBLIC_SUPPORT_URL`, 앱 `EXPO_PUBLIC_POLICY_ALLOWED_ORIGINS`, DB의 4종×6개
   문서 URL·SHA-256을 동일한 공개 HTTPS 호스트 구성으로 주입하고 canary를 수행해야
@@ -136,19 +181,36 @@ GitHub Actions의 `Public code release preflight` 수동 실행도 공개 코드
 
 ## 의존성 보안 추적
 
-2026-08-15 기준 고정 lockfile에 대해 `npm audit --omit=dev`는 Expo Metro 빌드 툴체인의
-전이 의존성 `image-size` 1.2.1에서 high 14건을 보고합니다. 현재 발행된
-`image-size` 2.0.2까지도 해당 ICNS/JXL/HEIF 무한 루프 권고의 수정 버전이 없습니다.
-이 패키지는 배포된 앱 런타임이 아니라 Metro가 저장소의 신뢰된 정적 자산을 빌드할 때만
-사용합니다. 외부 업로드 파일을 Metro에 전달하지 않으며, 권리 승인된 고정 자산만 빌드합니다.
-따라서 upstream 수정 버전이 나올 때까지 빌드 범위 위험으로 기록하되, 신뢰되지 않은
-이미지가 빌드 입력으로 연결되면 즉시 출시 차단 항목으로 승격합니다.
+2026-08-21 기준 Expo SDK 57.0.15의 `@expo/metro`는 Metro 0.84.4 계열을 고정하며,
+이 계열의 전이 의존성 `image-size` 1.2.1에는 두 개의 DoS 권고가 있었습니다. Meta는
+제한된 파서로 교체한 0.84.5를 React Native 0.85·0.86 및 Expo fixture에서 검증해
+배포했습니다. 이 앱은 React Native 0.86.2를 사용하므로 Metro 관련 14개 패키지를 모두
+정확히 0.84.5로 함께 고정합니다. 일부 패키지만 혼합하는 변경은 테스트가 거부하며,
+lockfile에는 `image-size`가 존재해서는 안 됩니다.
+
+Expo Doctor는 SDK 57.0.15가 선언한 0.84.4와의 차이를 계속 경고합니다. 모바일 `doctor`
+명령은 그 검사를 비활성화하지 않고 전체 출력을 확인합니다. 나머지 20개 검사가 통과하고
+14개 패키지의 0.84.5 불일치만 정확히 보고되며 실제 설치·lockfile도 일치할 때만 이 알려진
+예외를 허용합니다. 다른 Doctor 실패나 부분 override는 그대로 빌드를 중단합니다.
+
+이 변경은 배포 앱의 기능 라이브러리가 아니라 정적 자산을 처리하는 빌드 툴체인에
+적용됩니다. 외부 업로드 파일을 Metro에 전달하지 않고, 공개 저장소 안전 검사가 승인된
+고정 PNG 3개만 허용하는 방어도 유지합니다. Expo가 같은 수정 또는 상위 수정판을 공식
+호환 세트에 포함한 뒤 전체 native config와 iOS·Android·Web export를 다시 통과한 경우에만
+override를 제거합니다. main 브랜치의 Dependabot 경고가 실제로 닫힐 때까지 GitHub Issue
+#5를 유지합니다.
 
 `xcode` 빌드 의존성이 가져오던 취약한 `uuid` 7.0.3은 npm override로 호환되는
 11.1.1로 상향했습니다. 해당 경로는 Expo native config/prebuild를 다시 검증합니다.
 
-- 매 Expo SDK 57 패치 릴리스와 월 1회 정기 점검 시 `npm audit --omit=dev` 및 Expo Doctor를 재실행합니다.
-- 호환되는 upstream 패치가 나오면 lockfile을 갱신하고 전체 native config·export 검증을 다시 수행합니다.
+2026-08-21 기준 `tools/eas-cli`의 별도 release-tool 감사에는 최신 `eas-cli` 22.2.0이 정확히
+고정한 전이 의존성 경고가 추가로 존재합니다. 동적 `npx`로 되돌려 경고를 숨기거나 npm이
+제안하는 구형 EAS CLI로 강제 다운그레이드하지 않습니다. 출시 명령은 lockfile에 결속된
+CLI를 trusted release checkout에서만 `--offline`으로 실행하고, EAS 인증은 최소 권한의
+외부 비밀 저장소를 사용하며, 공식 패치 릴리스를 계속 추적합니다.
+
+- 매 Expo SDK 57 패치 릴리스와 월 1회 정기 점검 시 `npm audit --omit=dev`, Metro 전체 계열 버전 검사 및 Expo Doctor를 재실행합니다.
+- Expo 호환 의존성이 수정판을 채택하면 override 제거 후보로 lockfile을 갱신하고 전체 native config·3개 플랫폼 export를 다시 수행합니다.
 - critical 취약점 또는 앱 런타임에 직접 도달 가능한 취약점이 확인되면 제출 차단 항목으로 승격합니다.
 
 ## 제출 전 남은 외부 설정

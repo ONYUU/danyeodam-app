@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
@@ -7,6 +7,7 @@ import { BrandMark } from '@/components/brand-mark';
 import { Screen } from '@/components/screen';
 import { AccessPanel } from '@/features/access/access-panel';
 import { BlockSettingsEntry } from '@/features/blocks/settings-entry';
+import { useHapticPreference } from '@/features/bonus-pack/use-haptic-preference';
 import { EmailLinkPanel } from '@/features/email-link/email-link-panel';
 import { LocationConsentPanel } from '@/features/location-consent/location-consent-panel';
 import { PrivacyRightsEntry } from '@/features/privacy-rights/privacy-rights-entry';
@@ -23,6 +24,7 @@ export default function SettingsScreen() {
   const policySupport = usePolicySupport();
   const policyCopy = policySupportCopy(locale);
   const [privacyRightsOpen, setPrivacyRightsOpen] = useState(false);
+  const { state: haptics, setEnabled: setHapticsEnabled } = useHapticPreference();
 
   if (privacyRightsOpen) {
     return (
@@ -75,6 +77,34 @@ export default function SettingsScreen() {
             );
           })}
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.preferenceRow}>
+          <View style={styles.preferenceCopy}>
+            <Text style={styles.sectionTitle}>{t('settings.hapticsTitle')}</Text>
+            <Text style={styles.sectionHint}>{t('settings.hapticsBody')}</Text>
+          </View>
+          <Switch
+            accessibilityLabel={t('settings.hapticsTitle')}
+            accessibilityRole="switch"
+            accessibilityState={{
+              checked: haptics.enabled,
+              busy: haptics.loading || haptics.saving,
+              disabled: haptics.loading || haptics.saving,
+            }}
+            disabled={haptics.loading || haptics.saving}
+            onValueChange={setHapticsEnabled}
+            thumbColor={colors.white}
+            trackColor={{ false: colors.border, true: colors.accent }}
+            value={haptics.enabled}
+          />
+        </View>
+        {haptics.error ? (
+          <Text accessibilityLiveRegion="assertive" style={styles.preferenceError}>
+            {t('settings.hapticsError')}
+          </Text>
+        ) : null}
       </View>
 
       <View style={styles.section}>
@@ -152,6 +182,20 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
     marginTop: spacing.md,
+  },
+  preferenceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  preferenceCopy: {
+    flex: 1,
+  },
+  preferenceError: {
+    marginTop: spacing.sm,
+    color: colors.stamp,
+    fontSize: 12,
+    lineHeight: 18,
   },
   languageButton: {
     minWidth: 96,

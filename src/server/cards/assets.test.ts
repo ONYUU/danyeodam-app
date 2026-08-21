@@ -15,7 +15,10 @@ vi.mock("@/server/env", () => ({
   }),
 }));
 
-import { downloadPublishedCardAsset } from "@/server/cards/assets";
+import {
+  downloadOwnedSpecialCardAssetAtPath,
+  downloadPublishedCardAsset,
+} from "@/server/cards/assets";
 
 const cardId = "00000000-0000-4000-8000-000000000102";
 
@@ -53,7 +56,42 @@ describe("downloadPublishedCardAsset", () => {
     );
     expect(fetchMock).toHaveBeenCalledWith(
       new URL("https://project.supabase.co/storage/v1/object/card-assets/cards/seoul.webp"),
-      expect.objectContaining({ cache: "no-store" }),
+      expect.objectContaining({ cache: "no-store", redirect: "error" }),
+    );
+  });
+
+  it("keeps owned special art in the dedicated private bucket", async () => {
+    const fetchMock = vi.fn(async () => new Response(new Uint8Array([4, 5, 6]), {
+      status: 200,
+      headers: {
+        "Content-Type": "image/webp",
+        "Content-Length": "3",
+      },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await downloadOwnedSpecialCardAssetAtPath("cards/special/owned.webp");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      new URL(
+        "https://project.supabase.co/storage/v1/object/special-card-assets/cards/special/owned.webp",
+      ),
+      expect.objectContaining({ cache: "no-store", redirect: "error" }),
+    );
+  });
+
+  it("fails closed instead of forwarding service credentials through a redirect", async () => {
+    const fetchMock = vi.fn(async () => new Response(null, {
+      status: 302,
+      headers: { Location: "https://redirect.example.test/leak" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(downloadPublishedCardAsset(cardId)).rejects.toMatchObject({ code: "INTERNAL" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(URL),
+      expect.objectContaining({ redirect: "error" }),
     );
   });
 

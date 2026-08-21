@@ -8,6 +8,11 @@ import path from 'node:path';
 const SHA_256_PATTERN = /^[a-f0-9]{64}$/u;
 const GIT_SHA_PATTERN = /^[a-f0-9]{40}$/u;
 const RFC_3339_UTC_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u;
+const SERVER_BONUS_PACK_ISSUANCE_SCOPES = new Set([
+  'off',
+  'participants',
+  'public',
+]);
 
 function assertClosedKeys(value, expectedKeys, label) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
@@ -59,7 +64,16 @@ export function readReleaseApproval({ approvalFile, repositoryRoot, sourceCommit
 
   assertClosedKeys(
     approval,
-    ['approvedAt', 'approvedBy', 'evidence', 'schemaVersion', 'sourceCommitSha', 'status'],
+    [
+      'approvedAt',
+      'approvedBy',
+      'evidence',
+      'expectedServerBonusPackIssuanceScope',
+      'mobilePublicConfigSha256',
+      'schemaVersion',
+      'sourceCommitSha',
+      'status',
+    ],
     'Release approval',
   );
   assertClosedKeys(
@@ -68,8 +82,8 @@ export function readReleaseApproval({ approvalFile, repositoryRoot, sourceCommit
     'Release approval evidence',
   );
 
-  if (approval.schemaVersion !== 1 || approval.status !== 'approved') {
-    throw new Error('The private release approval must use schemaVersion 1 and status approved.');
+  if (approval.schemaVersion !== 2 || approval.status !== 'approved') {
+    throw new Error('The private release approval must use schemaVersion 2 and status approved.');
   }
   if (approval.sourceCommitSha !== sourceCommitSha) {
     throw new Error('The private release approval sourceCommitSha must match the exact EAS build commit.');
@@ -90,6 +104,22 @@ export function readReleaseApproval({ approvalFile, repositoryRoot, sourceCommit
     || Date.parse(approval.approvedAt) > Date.now() + 300_000
   ) {
     throw new Error('The private release approval approvedAt value must be a valid UTC timestamp that is not in the future.');
+  }
+  if (!SERVER_BONUS_PACK_ISSUANCE_SCOPES.has(
+    approval.expectedServerBonusPackIssuanceScope,
+  )) {
+    throw new Error(
+      'The private release approval expectedServerBonusPackIssuanceScope must be off, participants, or public.',
+    );
+  }
+  if (
+    typeof approval.mobilePublicConfigSha256 !== 'string'
+    || !SHA_256_PATTERN.test(approval.mobilePublicConfigSha256)
+    || /^0{64}$/u.test(approval.mobilePublicConfigSha256)
+  ) {
+    throw new Error(
+      'The private release approval mobilePublicConfigSha256 must be a non-placeholder lowercase SHA-256.',
+    );
   }
   for (const [key, value] of Object.entries(approval.evidence)) {
     if (typeof value !== 'string' || !SHA_256_PATTERN.test(value)) {

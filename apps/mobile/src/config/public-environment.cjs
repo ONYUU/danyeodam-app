@@ -9,6 +9,21 @@ const APP_ENVIRONMENTS = [
 const LOCAL_API_BASE_URL = 'http://127.0.0.1:3000';
 const LOCAL_SUPABASE_URL = 'http://127.0.0.1:54321';
 const LOCAL_SUPABASE_PUBLISHABLE_KEY = 'local-development-publishable-key';
+const RESERVED_PUBLIC_HOST_SUFFIXES = [
+  '.invalid',
+  '.example',
+  '.test',
+  '.localhost',
+  '.internal',
+  '.alt',
+  '.onion',
+];
+const PLACEHOLDER_PUBLIC_HOSTS = [
+  'example.com',
+  'example.net',
+  'example.org',
+  'home.arpa',
+];
 
 function parseAppEnvironment(value) {
   const candidate = value?.trim() || 'development';
@@ -36,6 +51,38 @@ function parseIpv4(hostname) {
   return numbers;
 }
 
+function parseIpv6(hostname) {
+  if (!hostname.includes(':')) return null;
+  const halves = hostname.split('::');
+  if (halves.length > 2) return null;
+  const left = halves[0] === '' ? [] : halves[0].split(':');
+  const right = halves.length === 1 || halves[1] === ''
+    ? []
+    : halves[1].split(':');
+  const explicitGroups = [...left, ...right];
+  if (explicitGroups.some((group) => !/^[0-9a-f]{1,4}$/.test(group))) {
+    return null;
+  }
+  const omittedGroupCount = 8 - explicitGroups.length;
+  if (
+    (halves.length === 1 && omittedGroupCount !== 0)
+    || (halves.length === 2 && omittedGroupCount < 1)
+  ) {
+    return null;
+  }
+  return [
+    ...left.map((group) => Number.parseInt(group, 16)),
+    ...Array.from({ length: omittedGroupCount }, () => 0),
+    ...right.map((group) => Number.parseInt(group, 16)),
+  ];
+}
+
+function ipv4FromIpv6Tail(ipv6) {
+  const high = ipv6[6];
+  const low = ipv6[7];
+  return [high >> 8, high & 255, low >> 8, low & 255].join('.');
+}
+
 function isPrivateNetworkHostname(rawHostname) {
   const hostname = rawHostname
     .trim()
@@ -46,10 +93,22 @@ function isPrivateNetworkHostname(rawHostname) {
   if (
     hostname === 'localhost' ||
     hostname.endsWith('.localhost') ||
-    hostname.endsWith('.local')
+    hostname.endsWith('.local') ||
+    hostname === 'invalid' ||
+    hostname === 'example' ||
+    hostname === 'test' ||
+    hostname === 'local' ||
+    hostname === 'internal' ||
+    hostname === 'alt' ||
+    hostname === 'onion' ||
+    RESERVED_PUBLIC_HOST_SUFFIXES.some((suffix) => hostname.endsWith(suffix)) ||
+    PLACEHOLDER_PUBLIC_HOSTS.some(
+      (placeholder) => hostname === placeholder || hostname.endsWith(`.${placeholder}`),
+    )
   ) {
     return true;
   }
+  if (!hostname.includes('.') && !hostname.includes(':')) return true;
 
   const ipv4 = parseIpv4(hostname);
   if (ipv4) {
@@ -61,34 +120,48 @@ function isPrivateNetworkHostname(rawHostname) {
       (first === 100 && second >= 64 && second <= 127) ||
       (first === 169 && second === 254) ||
       (first === 172 && second >= 16 && second <= 31) ||
+      (first === 192 && second === 0 && ipv4[2] === 0) ||
       (first === 192 && second === 168) ||
+      (first === 192 && second === 0 && ipv4[2] === 2) ||
+      (first === 192 && second === 88 && ipv4[2] === 99) ||
       (first === 198 && (second === 18 || second === 19)) ||
+      (first === 198 && second === 51 && ipv4[2] === 100) ||
+      (first === 203 && second === 0 && ipv4[2] === 113) ||
       first >= 224
     );
   }
 
-  if (hostname.includes(':')) {
-    if (hostname === '::' || hostname === '::1') {
+  const ipv6 = parseIpv6(hostname);
+  if (ipv6) {
+    const [first, second, third, fourth] = ipv6;
+    if (
+      ipv6.every((group) => group === 0) ||
+      (ipv6.slice(0, 7).every((group) => group === 0) && ipv6[7] === 1) ||
+      (first & 0xfe00) === 0xfc00 ||
+      (first & 0xffc0) === 0xfe80 ||
+      (first & 0xff00) === 0xff00 ||
+      (first === 0x0100 && second === 0 && third === 0 && fourth === 0) ||
+      (first === 0x0064 && second === 0xff9b && third === 1) ||
+      (first === 0x2001 && second <= 0x01ff) ||
+      (first === 0x2001 && second === 0x0db8) ||
+      first === 0x2002 ||
+      (first === 0x3fff && (second & 0xf000) === 0) ||
+      first === 0x5f00
+    ) {
       return true;
     }
-    if (/^(fc|fd|fe[89abcdef])/.test(hostname)) {
-      return true;
+
+    const isIpv4Compatible = ipv6.slice(0, 6).every((group) => group === 0);
+    const isIpv4Mapped = ipv6.slice(0, 5).every((group) => group === 0)
+      && ipv6[5] === 0xffff;
+    const isWellKnownNat64 = first === 0x0064
+      && second === 0xff9b
+      && ipv6.slice(2, 6).every((group) => group === 0);
+    if (isIpv4Compatible || isIpv4Mapped) return true;
+    if (isWellKnownNat64) {
+      return isPrivateNetworkHostname(ipv4FromIpv6Tail(ipv6));
     }
-    const mappedIpv4 = hostname.match(/::ffff:(\d+\.\d+\.\d+\.\d+)$/)?.[1];
-    if (mappedIpv4) {
-      return isPrivateNetworkHostname(mappedIpv4);
-    }
-    const mappedHex = hostname.match(
-      /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/,
-    );
-    if (mappedHex) {
-      const high = Number.parseInt(mappedHex[1], 16);
-      const low = Number.parseInt(mappedHex[2], 16);
-      return isPrivateNetworkHostname(
-        [high >> 8, high & 255, low >> 8, low & 255].join('.'),
-      );
-    }
-    return false;
+    if ((first & 0xe000) !== 0x2000) return true;
   }
 
   return false;
@@ -129,7 +202,7 @@ function parseApiBaseUrl(value, appEnvironment) {
   }
   if (isPublicBuild && isPrivateNetworkHostname(parsed.hostname)) {
     throw new Error(
-      'Preview and production API endpoints must not use localhost or a private network address.',
+      'Preview and production API endpoints must not use private, reserved, documentation, or placeholder hosts.',
     );
   }
   if (isPublicBuild && (parsed.search || parsed.hash)) {
@@ -178,7 +251,7 @@ function parseSupabaseUrl(value, appEnvironment) {
   }
   if (isPublicBuild && isPrivateNetworkHostname(parsed.hostname)) {
     throw new Error(
-      'Preview and production Supabase endpoints must not use localhost or a private network address.',
+      'Preview and production Supabase endpoints must not use private, reserved, documentation, or placeholder hosts.',
     );
   }
   return parsed.toString().replace(/\/$/, '');
@@ -186,7 +259,7 @@ function parseSupabaseUrl(value, appEnvironment) {
 
 function decodeJwtPayload(candidate) {
   const segments = candidate.split('.');
-  if (segments.length !== 3) {
+  if (segments.length !== 3 || segments.some((segment) => segment.length === 0)) {
     return null;
   }
   try {
@@ -225,7 +298,14 @@ function parseSupabasePublishableKey(value, appEnvironment) {
   if (isLocal) {
     return candidate;
   }
-  if (candidate.startsWith('sb_publishable_') && candidate.length >= 24) {
+  if (/^sb_publishable_[A-Za-z0-9_-]{10,}$/.test(candidate)) {
+    if (
+      /(?:replace|placeholder|example|validation|test[_-]?only|local)/i.test(candidate)
+    ) {
+      throw new Error(
+        'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY must not be a placeholder value.',
+      );
+    }
     return candidate;
   }
 
@@ -273,7 +353,7 @@ function parsePolicyAllowedOrigins(value, appEnvironment) {
       || isPrivateNetworkHostname(parsed.hostname)
     ) {
       throw new Error(
-        'EXPO_PUBLIC_POLICY_ALLOWED_ORIGINS must contain public HTTPS origins without paths, credentials, queries, or fragments.',
+        'EXPO_PUBLIC_POLICY_ALLOWED_ORIGINS must contain non-placeholder public HTTPS origins without paths, credentials, queries, or fragments.',
       );
     }
     return parsed.origin;

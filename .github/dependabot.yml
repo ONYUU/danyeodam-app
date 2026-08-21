@@ -4,14 +4,73 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+      day: monday
+      time: "09:00"
+      timezone: Asia/Seoul
+    open-pull-requests-limit: 3
+    groups:
+      root-production-minor-patch:
+        applies-to: version-updates
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+      root-development-minor-patch:
+        applies-to: version-updates
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+    ignore:
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
   - package-ecosystem: npm
     directory: /apps/mobile
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+      day: monday
+      time: "10:00"
+      timezone: Asia/Seoul
+    open-pull-requests-limit: 3
+    groups:
+      mobile-production-minor-patch:
+        applies-to: version-updates
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+      mobile-development-minor-patch:
+        applies-to: version-updates
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+    ignore:
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "@types/node"
+        update-types:
+          - version-update:semver-major
+      # Expo SDK 57 owns this native compatibility line; patch updates remain eligible.
+      - dependency-name: react-native-safe-area-context
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-major
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+      day: monday
+      time: "11:00"
+      timezone: Asia/Seoul
+    open-pull-requests-limit: 2
+    groups:
+      actions-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch

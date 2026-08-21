@@ -4,6 +4,7 @@ import type {
 
 const MAX_DOCUMENT_BYTES = 2 * 1024 * 1024;
 const DEFAULT_DEADLINE_MS = 10_000;
+const SHA256_PATTERN = /^[0-9a-f]{64}$/u;
 
 export class PolicyResourceVerificationError extends Error {
   constructor() {
@@ -65,6 +66,7 @@ export type PolicyResourceFetch = (
 export type VerifiedTrustedResource = {
   bytes: ArrayBuffer;
   contentType: string;
+  integrity: 'https-origin' | 'sha256';
   url: string;
 };
 
@@ -98,16 +100,28 @@ function copyChunks(chunks: readonly Uint8Array[], byteLength: number): ArrayBuf
   return result.buffer;
 }
 
-export async function verifyTrustedResource(input: {
+type TrustedResourceBaseInput = {
   acceptedContentTypes: readonly string[];
   allowedOrigins: readonly string[];
   deadlineMs?: number;
-  expectedSha256?: string;
   fetchResource: PolicyResourceFetch;
-  hashBytes(bytes: ArrayBuffer): Promise<string>;
   signal?: AbortSignal;
   url: string;
-}): Promise<VerifiedTrustedResource> {
+};
+
+type TrustedResourceIntegrityInput =
+  | {
+    expectedSha256: string;
+    hashBytes(bytes: ArrayBuffer): Promise<string>;
+  }
+  | {
+    expectedSha256?: never;
+    hashBytes?: never;
+  };
+
+export async function verifyTrustedResource(
+  input: TrustedResourceBaseInput & TrustedResourceIntegrityInput,
+): Promise<VerifiedTrustedResource> {
   const expectedUrl = canonicalTrustedUrl(input.url, input.allowedOrigins);
   const deadlineMs = input.deadlineMs ?? DEFAULT_DEADLINE_MS;
   if (
@@ -115,6 +129,10 @@ export async function verifyTrustedResource(input: {
     || deadlineMs < 1
     || deadlineMs > 30_000
     || input.acceptedContentTypes.length === 0
+    || (
+      input.expectedSha256 !== undefined
+      && !SHA256_PATTERN.test(input.expectedSha256)
+    )
   ) {
     fail();
   }
@@ -213,7 +231,12 @@ export async function verifyTrustedResource(input: {
         fail();
       }
     }
-    return { bytes, contentType, url: expectedUrl };
+    return {
+      bytes,
+      contentType,
+      integrity: input.expectedSha256 === undefined ? 'https-origin' : 'sha256',
+      url: expectedUrl,
+    };
   } catch {
     controller.abort();
     if (reader !== null) {

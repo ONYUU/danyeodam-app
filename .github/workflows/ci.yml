@@ -17,12 +17,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 24
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
           cache: npm
-      - run: npm ci
+      - name: Activate the pinned npm version through Corepack
+        run: |
+          corepack enable
+          test "$(node --version)" = "v24.19.0"
+          test "$(corepack npm --version)" = "11.16.0"
+      - run: corepack npm ci --strict-allow-scripts
       - run: npm run security:test-public
       - run: npm run security:check-public
       - run: npm test
@@ -34,33 +41,51 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 24
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
           cache: npm
-      - run: npm ci
-      - run: npx supabase start
+      - name: Activate the pinned npm version through Corepack
+        run: |
+          corepack enable
+          test "$(node --version)" = "v24.19.0"
+          test "$(corepack npm --version)" = "11.16.0"
+      - run: corepack npm ci --strict-allow-scripts
+      - run: npm run ci:remap-supabase-ports
+      - run: corepack npm run db:start
       - run: npm run db:test:location-upgrade
       - run: npm run db:test:account-deletion-upgrade
       - run: npm run db:test:reviewer-upgrade
+      - run: npm run db:test:bonus-pack-upgrade
       - if: always()
-        run: npx supabase stop --no-backup
+        run: corepack npm run db:stop
 
   database:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 24
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
           cache: npm
-      - run: npm ci
-      - run: npx supabase start
+      - name: Activate the pinned npm version through Corepack
+        run: |
+          corepack enable
+          test "$(node --version)" = "v24.19.0"
+          test "$(corepack npm --version)" = "11.16.0"
+      - run: corepack npm ci --strict-allow-scripts
+      - run: npm run ci:remap-supabase-ports
+      - run: corepack npm run db:start
       - run: npm run db:reset
       - run: npm run db:test
       - run: npm run db:test:concurrency
+      - run: npm run db:test:bonus-pack-concurrency
       - run: npm run db:test:reviewer-concurrency
       - run: npm run build
       - run: npm run api:test:account-deletion
@@ -70,7 +95,10 @@ jobs:
       - run: npm run api:test:localized-read
       - run: npm run api:test:location-compliance
       - run: npm run api:test:reviewer-access
+      - run: npm run api:test:bonus-pack
+        env:
+          DANYEODAM_BONUS_PACK_E2E_ALLOW_DISPOSABLE: "true"
       - run: npm run db:lint
       - run: npm run db:advisors
       - if: always()
-        run: npx supabase stop --no-backup
+        run: corepack npm run db:stop

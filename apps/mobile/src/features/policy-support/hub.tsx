@@ -34,6 +34,7 @@ type ViewerState = {
   text: string;
   title: string;
   url: string;
+  verificationBody: string;
 };
 
 const environment = getRuntimeEnvironment();
@@ -80,10 +81,12 @@ export function PolicySupportHub({ onExit, request }: {
         signal: controller.signal,
         type: policy.type,
       });
+      if (resource.integrity !== 'sha256') throw new Error('POLICY_INTEGRITY_REQUIRED');
       if (!controller.signal.aborted) {
         setViewer({
           ...resource,
           title: policyLabel(policy.type, copy),
+          verificationBody: copy.policyVerificationBody,
         });
       }
     } catch {
@@ -111,8 +114,15 @@ export function PolicySupportHub({ onExit, request }: {
         signal: controller.signal,
         url,
       });
+      if (resource.integrity !== 'https-origin') {
+        throw new Error('SUPPORT_ORIGIN_INTEGRITY_REQUIRED');
+      }
       if (!controller.signal.aborted) {
-        setViewer({ ...resource, title: copy.support });
+        setViewer({
+          ...resource,
+          title: copy.support,
+          verificationBody: copy.supportVerificationBody,
+        });
       }
     } catch {
       if (!controller.signal.aborted) setOpenFailed(true);
@@ -123,7 +133,7 @@ export function PolicySupportHub({ onExit, request }: {
         setOpening(null);
       }
     }
-  }, [copy.support]);
+  }, [copy]);
 
   const publishManifest = useCallback((
     manifest: CurrentPolicyManifest,
@@ -195,7 +205,7 @@ export function PolicySupportHub({ onExit, request }: {
           <Text style={styles.backLabel}>{t('common.back')}</Text>
         </Pressable>
         <Text accessibilityRole="header" style={styles.title}>{viewer.title}</Text>
-        <Text style={styles.viewerVerification}>{copy.verificationBody}</Text>
+        <Text style={styles.viewerVerification}>{viewer.verificationBody}</Text>
         <Text selectable style={styles.url}>{viewer.url}</Text>
         <Text selectable style={styles.viewerContent}>{viewer.text}</Text>
       </Screen>
@@ -214,7 +224,7 @@ export function PolicySupportHub({ onExit, request }: {
       </Pressable>
       <Text accessibilityRole="header" style={styles.title}>{copy.title}</Text>
       <Text style={styles.body}>{copy.body}</Text>
-      <Text style={styles.verification}>{copy.verificationBody}</Text>
+      <Text style={styles.verification}>{copy.overviewVerificationBody}</Text>
 
       {state.status === 'loading' ? (
         <View accessibilityLiveRegion="polite" style={styles.statePanel}>

@@ -12,6 +12,12 @@ const assetPathSchema = z.string().min(1).refine(
 
 const allowedImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const maximumAssetBytes = 10 * 1024 * 1024;
+const cardAssetBuckets = {
+  published: "card-assets",
+  ownedSpecial: "special-card-assets",
+} as const;
+
+type CardAssetBucket = (typeof cardAssetBuckets)[keyof typeof cardAssetBuckets];
 
 export type CardAssetStream = {
   body: ReadableStream<Uint8Array>;
@@ -37,19 +43,10 @@ async function isMissingStorageObject(response: Response): Promise<boolean> {
   return payload.error === "not_found" || payload.code === "not_found";
 }
 
-export async function downloadPublishedCardAsset(cardId: string): Promise<CardAssetStream> {
-  const client = getServiceClient();
-  const { data: rawPath, error: pathError } = await client
-    .schema("api_private")
-    .rpc("get_published_card_asset", { p_card_id: cardId });
-
-  if (pathError !== null) {
-    throw new ApiError("INTERNAL");
-  }
-  if (rawPath === null) {
-    throw new ApiError("NOT_FOUND");
-  }
-
+async function downloadCardAssetAtPath(
+  bucket: CardAssetBucket,
+  rawPath: unknown,
+): Promise<CardAssetStream> {
   const path = assetPathSchema.safeParse(rawPath);
   if (!path.success) {
     throw new ApiError("INTERNAL");
@@ -57,7 +54,7 @@ export async function downloadPublishedCardAsset(cardId: string): Promise<CardAs
 
   const environment = getServerEnvironment();
   const endpoint = new URL(
-    `/storage/v1/object/card-assets/${encodedStoragePath(path.data)}`,
+    `/storage/v1/object/${bucket}/${encodedStoragePath(path.data)}`,
     environment.NEXT_PUBLIC_SUPABASE_URL,
   );
   const response = await fetch(endpoint, {
@@ -66,6 +63,7 @@ export async function downloadPublishedCardAsset(cardId: string): Promise<CardAs
       Authorization: `Bearer ${environment.SUPABASE_SERVICE_ROLE_KEY}`,
     },
     cache: "no-store",
+    redirect: "error",
   });
 
   if (!response.ok) {
@@ -96,4 +94,26 @@ export async function downloadPublishedCardAsset(cardId: string): Promise<CardAs
     contentType,
     ...(contentLength === undefined ? {} : { contentLength }),
   };
+}
+
+export async function downloadOwnedSpecialCardAssetAtPath(
+  rawPath: unknown,
+): Promise<CardAssetStream> {
+  return downloadCardAssetAtPath(cardAssetBuckets.ownedSpecial, rawPath);
+}
+
+export async function downloadPublishedCardAsset(cardId: string): Promise<CardAssetStream> {
+  const client = getServiceClient();
+  const { data: rawPath, error: pathError } = await client
+    .schema("api_private")
+    .rpc("get_published_card_asset", { p_card_id: cardId });
+
+  if (pathError !== null) {
+    throw new ApiError("INTERNAL");
+  }
+  if (rawPath === null) {
+    throw new ApiError("NOT_FOUND");
+  }
+
+  return downloadCardAssetAtPath(cardAssetBuckets.published, rawPath);
 }

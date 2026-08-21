@@ -95,9 +95,32 @@ describe('always-available policy and support boundary', () => {
 
   it('displays the verified response bytes in-app without a second URL request', () => {
     const hub = source('src/features/policy-support/hub.tsx');
+    const rendering = source('src/features/policy-support/rendering.ts');
+    const policyOpen = hub.slice(
+      hub.indexOf('const openPolicy'),
+      hub.indexOf('const openSupport'),
+    );
+    const supportOpen = hub.slice(
+      hub.indexOf('const openSupport'),
+      hub.indexOf('const publishManifest'),
+    );
     expect(hub).toContain('setViewer({');
     expect(hub).toContain('{viewer.text}');
+    expect(hub).toContain('resource.integrity');
+    expect(hub).toContain('copy.policyVerificationBody');
+    expect(hub).toContain('copy.supportVerificationBody');
+    expect(hub).toContain('{viewer.verificationBody}');
     expect(hub).not.toContain('Linking.openURL');
+    expect(hub).not.toContain('WebView');
+    expect(hub).not.toContain('dangerouslySetInnerHTML');
+    expect(policyOpen).toContain("resource.integrity !== 'sha256'");
+    expect(policyOpen).toContain('copy.policyVerificationBody');
+    expect(policyOpen).not.toContain('copy.supportVerificationBody');
+    expect(supportOpen).toContain("resource.integrity !== 'https-origin'");
+    expect(supportOpen).toContain('copy.supportVerificationBody');
+    expect(supportOpen).not.toContain('copy.policyVerificationBody');
+    expect(rendering).toContain("from 'parse5'");
+    expect(rendering).not.toMatch(/\.replace\(\/<|\.match\(\/<|\.split\(\/<|\.test\([^)]*</u);
   });
 
   it('keeps the underlying form state mounted while the full-screen hub is open', () => {

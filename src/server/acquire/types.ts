@@ -17,6 +17,15 @@ export type InternalAcquisition = {
   acquired_on_kst: string;
 };
 
+export type BonusPackIssuanceScope = "off" | "participants" | "public";
+
+export type InternalSealedBonusPack = {
+  id: string;
+  status: "sealed";
+  issued_at: string;
+  date_kst: string;
+};
+
 export type ReadyContext = {
   status: "ready";
   user_id: string;
@@ -35,12 +44,14 @@ export type ReplayResult = {
   status: "replay";
   acquisition: InternalAcquisition;
   card: InternalCard;
+  bonus_pack?: InternalSealedBonusPack | null;
 };
 
 export type CreatedResult = {
   status: "created";
   acquisition: InternalAcquisition;
   card: InternalCard;
+  bonus_pack?: InternalSealedBonusPack | null;
 };
 
 export type DatabaseErrorCode = Extract<
@@ -109,6 +120,7 @@ export type AcquireRepository = {
     publicGateOpen: boolean;
     expectedSpotUpdatedAt: string;
     expectedUserId: string;
+    bonusPackIssuanceScope: BonusPackIssuanceScope;
   }): Promise<CommitResult>;
   recordFailure(input: {
     authUserId: string;
@@ -135,4 +147,5 @@ export type PublicAcquireBody = {
   back: {
     date_kst: string;
   };
+  bonus_pack?: InternalSealedBonusPack;
 };

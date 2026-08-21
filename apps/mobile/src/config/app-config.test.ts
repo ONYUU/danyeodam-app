@@ -18,9 +18,9 @@ const originalBuildSourceCommitSha =
 function setPublicSupabaseTestEnvironment() {
   process.env.EXPO_PUBLIC_SUPABASE_URL = 'https://project.supabase.co';
   process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY =
-    'sb_publishable_config_test_only';
+    'sb_publishable_F9x7K2mP4qR8sT6vW3yZ5aBcD1eG0hJ';
   process.env.EXPO_PUBLIC_POLICY_ALLOWED_ORIGINS =
-    'https://policies.example,https://support.example';
+    'https://policies.release-fixture.danyeodam.app,https://support.release-fixture.danyeodam.app';
 }
 
 function restoreEnvironment() {
@@ -194,6 +194,104 @@ describe('Expo application config', () => {
     expect(config.ios?.infoPlist?.CFBundleAllowMixedLocalizations).toBe(true);
   });
 
+  it('declares linked first-party collection and required-reason APIs', () => {
+    process.env.APP_ENV = 'development';
+
+    const privacyManifests = readConfig().ios?.privacyManifests;
+
+    expect(privacyManifests).toEqual({
+      NSPrivacyAccessedAPITypes: [
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryUserDefaults',
+          NSPrivacyAccessedAPITypeReasons: ['CA92.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryFileTimestamp',
+          NSPrivacyAccessedAPITypeReasons: ['0A2A.1', '3B52.1', 'C617.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryDiskSpace',
+          NSPrivacyAccessedAPITypeReasons: ['85F4.1', 'E174.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategorySystemBootTime',
+          NSPrivacyAccessedAPITypeReasons: ['35F9.1'],
+        },
+      ],
+      NSPrivacyCollectedDataTypes: [
+        ...[
+          'NSPrivacyCollectedDataTypeEmailAddress',
+        ].map((dataType) => ({
+          NSPrivacyCollectedDataType: dataType,
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+          ],
+        })),
+        ...[
+          'NSPrivacyCollectedDataTypePreciseLocation',
+        ].map((dataType) => ({
+          NSPrivacyCollectedDataType: dataType,
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+            'NSPrivacyCollectedDataTypePurposeAnalytics',
+          ],
+        })),
+        ...[
+          'NSPrivacyCollectedDataTypePhotosorVideos',
+          'NSPrivacyCollectedDataTypeOtherUserContent',
+        ].map((dataType) => ({
+          NSPrivacyCollectedDataType: dataType,
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+          ],
+        })),
+        ...[
+          'NSPrivacyCollectedDataTypeUserID',
+        ].map((dataType) => ({
+          NSPrivacyCollectedDataType: dataType,
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+            'NSPrivacyCollectedDataTypePurposeAnalytics',
+          ],
+        })),
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeDeviceID',
+          NSPrivacyCollectedDataTypeLinked: false,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+          ],
+        },
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeGameplayContent',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+          ],
+        },
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeProductInteraction',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAnalytics',
+          ],
+        },
+      ],
+      NSPrivacyTracking: false,
+      NSPrivacyTrackingDomains: [],
+    });
+  });
+
   it('fails closed when a production API endpoint is absent', () => {
     process.env.APP_ENV = 'production';
     delete process.env.EXPO_PUBLIC_API_BASE_URL;
@@ -203,7 +301,8 @@ describe('Expo application config', () => {
 
   it('fails closed when production Supabase public credentials are absent', () => {
     process.env.APP_ENV = 'production';
-    process.env.EXPO_PUBLIC_API_BASE_URL = 'https://api.example.com';
+    process.env.EXPO_PUBLIC_API_BASE_URL =
+      'https://api.release-fixture.danyeodam.app';
     delete process.env.EXPO_PUBLIC_SUPABASE_URL;
     delete process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
@@ -214,7 +313,8 @@ describe('Expo application config', () => {
     'locks down %s transport and overlay permissions',
     (appEnvironment) => {
       process.env.APP_ENV = appEnvironment;
-      process.env.EXPO_PUBLIC_API_BASE_URL = 'https://api.example.com';
+      process.env.EXPO_PUBLIC_API_BASE_URL =
+        'https://api.release-fixture.danyeodam.app';
       setPublicSupabaseTestEnvironment();
 
       const config = readConfig();
@@ -236,7 +336,8 @@ describe('Expo application config', () => {
 
   it('fails closed when the production policy/support origin allowlist is absent', () => {
     process.env.APP_ENV = 'production';
-    process.env.EXPO_PUBLIC_API_BASE_URL = 'https://api.example.com';
+    process.env.EXPO_PUBLIC_API_BASE_URL =
+      'https://api.release-fixture.danyeodam.app';
     setPublicSupabaseTestEnvironment();
     delete process.env.EXPO_PUBLIC_POLICY_ALLOWED_ORIGINS;
 
@@ -247,12 +348,15 @@ describe('Expo application config', () => {
     process.env.APP_ENV = 'production';
     process.env.EXPO_PUBLIC_API_BASE_URL = 'https://192.168.0.10';
 
-    expect(readConfig).toThrow('must not use localhost or a private network');
+    expect(readConfig).toThrow(
+      'must not use private, reserved, documentation, or placeholder hosts',
+    );
   });
 
   it('requires and embeds the verified source commit in a production EAS build', () => {
     process.env.APP_ENV = 'production';
-    process.env.EXPO_PUBLIC_API_BASE_URL = 'https://api.example.com';
+    process.env.EXPO_PUBLIC_API_BASE_URL =
+      'https://api.release-fixture.danyeodam.app';
     setPublicSupabaseTestEnvironment();
     process.env.EAS_BUILD = 'true';
     delete process.env.EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA;
@@ -263,11 +367,25 @@ describe('Expo application config', () => {
 
     const sourceCommitSha = 'a'.repeat(40);
     process.env.EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA = sourceCommitSha;
-    expect(readConfig().extra?.buildSourceCommitSha).toBe(sourceCommitSha);
+    const config = readConfig();
+    expect(config.extra?.buildSourceCommitSha).toBe(sourceCommitSha);
+    expect(config.plugins).toContainEqual([
+      './plugins/with-build-source-commit.cjs',
+      { sourceCommitSha },
+    ]);
 
     process.env.EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA = sourceCommitSha.toUpperCase();
     expect(readConfig).toThrow(
-      'Production EAS builds require EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA',
+      'EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA must be a lowercase 40-character Git SHA',
+    );
+  });
+
+  it('rejects a malformed optional source marker outside EAS as well', () => {
+    process.env.APP_ENV = 'e2e';
+    process.env.EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA = 'not-a-git-sha';
+
+    expect(readConfig).toThrow(
+      'EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA must be a lowercase 40-character Git SHA',
     );
   });
 
@@ -277,10 +395,24 @@ describe('Expo application config', () => {
 
     const config = createExpoConfig({
       config: {
-        extra: { buildSourceCommitSha: 'stale-config-value' },
+        extra: {
+          buildSourceCommitSha: 'stale-config-value',
+          expectedServerBonusPackIssuanceScope: 'public',
+          mobilePublicConfigSha256: 'stale-config-digest',
+          BONUS_PACK_ISSUANCE_SCOPE: 'public',
+        },
       },
     } as unknown as ConfigContext);
 
     expect(config.extra).not.toHaveProperty('buildSourceCommitSha');
+    expect(config.extra).not.toHaveProperty(
+      'expectedServerBonusPackIssuanceScope',
+    );
+    expect(config.extra).not.toHaveProperty('mobilePublicConfigSha256');
+    expect(config.extra).not.toHaveProperty('BONUS_PACK_ISSUANCE_SCOPE');
+    expect(config.plugins).toContainEqual([
+      './plugins/with-build-source-commit.cjs',
+      { sourceCommitSha: null },
+    ]);
   });
 });

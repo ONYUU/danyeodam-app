@@ -7,28 +7,39 @@
   "engines": {
     "node": ">=24.0.0"
   },
+  "allowScripts": {
+    "fsevents@2.3.3": true,
+    "unrs-resolver@1.12.2": true
+  },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run env:assert:deployment && next build",
+    "env:assert:deployment": "node --conditions=react-server --experimental-strip-types scripts/assert-server-deployment-env.mjs",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "security:check-public": "node scripts/check-public-repo-safety.mjs",
-    "security:test-public": "node --test scripts/test-public-repo-safety.mjs",
+    "security:test-public": "node --test scripts/test-public-repo-safety.mjs scripts/test-bonus-pack-e2e-contract.mjs",
     "verify:public-source": "npm run security:test-public && npm run security:check-public && npm test && npm run typecheck && npm run lint && npm run build",
     "api:test:auth-email-confirmation": "node scripts/test-auth-email-confirmation-e2e.mjs",
     "api:test:personal-card": "node scripts/test-personal-card-e2e.mjs",
     "api:test:share-retro": "node scripts/test-share-retro-e2e.mjs",
     "api:test:localized-read": "node scripts/test-localized-read-e2e.mjs",
+    "api:test:bonus-pack": "node scripts/test-bonus-pack-http-e2e.mjs",
     "api:test:location-compliance": "node scripts/test-location-compliance-e2e.mjs",
     "api:test:account-deletion": "node scripts/test-account-deletion-e2e.mjs",
     "api:test:reviewer-access": "node scripts/test-reviewer-access-e2e.mjs",
+    "ci:remap-supabase-ports": "node scripts/remap-supabase-ci-ports.mjs",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop --no-backup",
     "db:reset": "supabase db reset --local --yes",
     "db:test": "supabase test db --local",
     "db:test:concurrency": "node scripts/test-db-concurrency.mjs",
+    "db:test:bonus-pack-concurrency": "node scripts/test-bonus-pack-concurrency.mjs",
     "db:test:reviewer-concurrency": "node scripts/test-reviewer-fixture-concurrency.mjs",
+    "db:test:bonus-pack-upgrade": "node scripts/test-bonus-pack-upgrade.mjs",
     "db:test:reviewer-upgrade": "node scripts/test-reviewer-fixture-upgrade.mjs",
     "db:test:location-upgrade": "node scripts/test-location-compliance-upgrade.mjs",
     "db:test:account-deletion-upgrade": "node scripts/test-account-deletion-upgrade.mjs",
@@ -36,8 +47,8 @@
     "db:advisors": "supabase db advisors --local --type all --level warn --fail-on error"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.112.2",
-    "next": "16.3.0",
+    "@supabase/supabase-js": "2.112.3",
+    "next": "16.3.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "0.0.1",
@@ -49,10 +60,10 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
     "eslint": "9.39.5",
-    "eslint-config-next": "16.3.0",
-    "pg": "8.22.0",
-    "supabase": "2.113.0",
+    "eslint-config-next": "16.3.2",
+    "pg": "8.23.0",
+    "supabase": "2.115.0",
     "typescript": "6.0.3",
-    "vitest": "4.1.10"
+    "vitest": "4.1.11"
   }
 }

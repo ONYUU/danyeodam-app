@@ -7,6 +7,10 @@ dist/
 !.env.example
 !**/.env.example
 .npmrc
+.netrc
+.pypirc
+.sentryclirc
+.direnv/
 .vercel
 *.log
 .DS_Store
@@ -38,6 +42,9 @@ apps/mobile/ios/
 *.apks
 *.xcarchive/
 *.dSYM/
+*.xcresult/
+*.app/
+DerivedData/
 native-debug-symbols*.zip
 GoogleService-Info.plist
 google-services.json
@@ -55,6 +62,15 @@ service-account*.json
 *.sqlite
 *.sqlite3
 *.db
+*.age
+*.gpg
+*.kdbx
+*.7z
+*.rar
+*.tar
+*.tgz
+*.gz
+*.zip
 *.local.json
 evidence-local/
 reports-private/
@@ -77,9 +93,12 @@ docs/STORE-SUBMISSION-PACKET.md
 scripts/finalize-store-submission-artifacts.mjs
 scripts/inspect-store-artifacts.mjs
 scripts/lib/safe-zip.py
+scripts/lib/private-release-approval-v2.mjs
 scripts/lib/seoul-launch-deployment.mjs
+scripts/lib/store-release-verification.mjs
 scripts/lib/store-artifact-inspector.mjs
 scripts/lib/store-submission-validator.mjs
+scripts/lib/strict-json.mjs
 scripts/prepare-seoul-launch-deployment.mjs
 scripts/publish-seoul-launch-deployment.mjs
 scripts/test-card-asset-rights-validator.mjs
@@ -87,5 +106,7 @@ scripts/test-seoul-launch-content-validator.mjs
 scripts/test-seoul-launch-deployment-db.mjs
 scripts/test-store-submission-validator.mjs
 scripts/validate-card-asset-rights.mjs
+scripts/validate-private-release-approval-v2.mjs
 scripts/validate-seoul-launch-content.mjs
+scripts/validate-store-release.mjs
 scripts/validate-store-submission-packet.mjs

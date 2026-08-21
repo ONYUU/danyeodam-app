@@ -22,6 +22,9 @@ export default function AuthenticatedApplication({
               <Stack.Screen name="auth/callback" />
               <Stack.Screen name="reviewer-login" />
               <Stack.Screen name="spot/[id]" />
+              <Stack.Screen name="bonus-packs/index" />
+              <Stack.Screen name="bonus-packs/[id]" />
+              <Stack.Screen name="card-inventory" />
               <Stack.Screen name="share-block" />
               <Stack.Screen name="public-share-block" />
               <Stack.Screen name="blocks" />

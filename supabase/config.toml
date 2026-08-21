@@ -138,6 +138,13 @@ public = true
 file_size_limit = "10MiB"
 allowed_mime_types = ["image/png", "image/jpeg", "image/webp"]
 
+# Special-card originals are never public Storage objects. The owner-only API
+# checks an opened bonus result before the server downloads from this bucket.
+[storage.buckets.special-card-assets]
+public = false
+file_size_limit = "10MiB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/webp"]
+
 # Allow connections via S3 compatible clients
 [storage.s3_protocol]
 enabled = true

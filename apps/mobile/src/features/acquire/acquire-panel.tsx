@@ -124,6 +124,7 @@ export function AcquirePanel({ spotId }: { spotId: string }) {
   };
 
   if (state.status === 'success') {
+    const bonusPack = state.result.bonusPack;
     const title = getLocalizedText(
       state.result.card.title,
       locale,
@@ -157,6 +158,31 @@ export function AcquirePanel({ spotId }: { spotId: string }) {
         <Text style={styles.date}>
           {t('acquire.dateLabel')} · {date}
         </Text>
+        {bonusPack === undefined ? null : (
+          <View style={styles.bonusPackNotice}>
+            <Text accessibilityLiveRegion="polite" style={styles.bonusPackTitle}>
+              {t('acquire.bonusPackGrantedTitle')}
+            </Text>
+            <Text style={styles.bonusPackBody}>
+              {t('acquire.bonusPackGrantedBody')}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push({
+                pathname: '/bonus-packs/[id]',
+                params: { id: bonusPack.id },
+              })}
+              style={({ pressed }) => [
+                styles.bonusPackButton,
+                pressed ? styles.pressed : null,
+              ]}
+            >
+              <Text style={styles.bonusPackButtonLabel}>
+                {t('acquire.openBonusPack')}
+              </Text>
+            </Pressable>
+          </View>
+        )}
         <RecoveryIssuePanel embedded />
       </View>
     );
@@ -348,5 +374,36 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.mutedInk,
     fontSize: 13,
+  },
+  bonusPackNotice: {
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: '#D7B4AA',
+    borderRadius: radius.md,
+    backgroundColor: '#F6E7E0',
+  },
+  bonusPackTitle: {
+    color: '#7D4D4E',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  bonusPackBody: {
+    marginTop: spacing.xs,
+    color: colors.mutedInk,
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  bonusPackButton: {
+    minHeight: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: '#985B5E',
+  },
+  bonusPackButtonLabel: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '900',
   },
 });

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { localizedTextSchema } from "@/server/localization/schema";
+import { sealedBonusPackSchema } from "@/server/bonus-packs/db-contract";
 
 const cardSchema = z.object({
   id: z.uuid(),
@@ -44,6 +45,13 @@ const databaseErrorResultSchema = z.object({
   expected_user_id: z.uuid().optional(),
 });
 
+const replayResultSchema = z.object({
+  status: z.literal("replay"),
+  acquisition: acquisitionSchema,
+  card: cardSchema,
+  bonus_pack: sealedBonusPackSchema.nullable().optional(),
+});
+
 export const contextResultSchema = z.discriminatedUnion("status", [
   z.object({
     status: z.literal("ready"),
@@ -58,11 +66,7 @@ export const contextResultSchema = z.discriminatedUnion("status", [
     }),
     card: cardSchema,
   }),
-  z.object({
-    status: z.literal("replay"),
-    acquisition: acquisitionSchema,
-    card: cardSchema,
-  }),
+  replayResultSchema,
   databaseErrorResultSchema,
 ]);
 
@@ -71,12 +75,9 @@ export const commitResultSchema = z.discriminatedUnion("status", [
     status: z.literal("created"),
     acquisition: acquisitionSchema,
     card: cardSchema,
+    bonus_pack: sealedBonusPackSchema.nullable().optional(),
   }),
-  z.object({
-    status: z.literal("replay"),
-    acquisition: acquisitionSchema,
-    card: cardSchema,
-  }),
+  replayResultSchema,
   databaseErrorResultSchema,
 ]);
 
@@ -96,10 +97,6 @@ export const recordFailureResultSchema = z.union([
     code: z.enum(["ALREADY_ACQUIRED_TODAY", "SPOT_NOT_OPEN", "GATE_CLOSED"]),
     details: z.object({}).strict(),
   }),
-  z.object({
-    status: z.literal("replay"),
-    acquisition: acquisitionSchema,
-    card: cardSchema,
-  }),
+  replayResultSchema,
   databaseErrorResultSchema,
 ]);

@@ -6,20 +6,29 @@ import { colors, radius } from '@/theme/tokens';
 type CardArtworkProps = {
   imageUrl: string | null;
   colorHex: string;
+  requestHeaders?: Record<string, string>;
+  requestVersion?: number;
+  onLoadError?: () => void;
   height?: number;
   fill?: boolean;
   borderRadius?: number;
+  resizeMode?: 'cover' | 'contain';
 };
 
 export function CardArtwork({
   imageUrl,
   colorHex,
+  requestHeaders,
+  requestVersion = 0,
+  onLoadError,
   height = 150,
   fill = false,
   borderRadius = radius.sm,
+  resizeMode = 'cover',
 }: CardArtworkProps) {
-  const [failedUrl, setFailedUrl] = useState<string | null>(null);
-  const failed = imageUrl !== null && failedUrl === imageUrl;
+  const requestIdentity = imageUrl === null ? null : `${imageUrl}:${requestVersion}`;
+  const [failedRequestIdentity, setFailedRequestIdentity] = useState<string | null>(null);
+  const failed = requestIdentity !== null && failedRequestIdentity === requestIdentity;
 
   return (
     <View
@@ -34,9 +43,18 @@ export function CardArtwork({
     >
       {imageUrl !== null && !failed ? (
         <Image
-          onError={() => setFailedUrl(imageUrl)}
-          resizeMode="cover"
-          source={{ uri: imageUrl }}
+          onError={() => {
+            setFailedRequestIdentity(requestIdentity);
+            onLoadError?.();
+          }}
+          resizeMode={resizeMode}
+          source={{
+            uri: imageUrl,
+            ...(requestHeaders === undefined ? {} : {
+              cache: 'reload' as const,
+              headers: requestHeaders,
+            }),
+          }}
           style={styles.image}
         />
       ) : (

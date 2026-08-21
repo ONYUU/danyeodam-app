@@ -16,6 +16,11 @@ const require = createRequire(import.meta.url);
 const expoCliPath = require.resolve('expo/bin/cli');
 const outputDirectory = mkdtempSync(join(tmpdir(), 'danyeodam-export-'));
 const exportSourceCommitSha = 'a'.repeat(40);
+const forbiddenServerApprovalMarkers = [
+  'BONUS_PACK_ISSUANCE_SCOPE',
+  'expectedServerBonusPackIssuanceScope',
+  'mobilePublicConfigSha256',
+];
 
 function containsBytesRecursively(directory, expectedBytes) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -51,12 +56,14 @@ try {
         APP_ENV: 'production',
         CI: '1',
         EXPO_NO_TELEMETRY: '1',
-        EXPO_PUBLIC_API_BASE_URL: 'https://api.ci.danyeodam.invalid',
+        EXPO_PUBLIC_API_BASE_URL:
+          'https://api.release-fixture.danyeodam.app',
         EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA: exportSourceCommitSha,
-        EXPO_PUBLIC_SUPABASE_URL: 'https://database.ci.danyeodam.invalid',
-        EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_ci_validation_only',
+        EXPO_PUBLIC_SUPABASE_URL: 'https://release-fixture.supabase.co',
+        EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+          'sb_publishable_F9x7K2mP4qR8sT6vW3yZ5aBcD1eG0hJ',
         EXPO_PUBLIC_POLICY_ALLOWED_ORIGINS:
-          'https://policies.ci.danyeodam.invalid,https://support.ci.danyeodam.invalid',
+          'https://policies.release-fixture.danyeodam.app,https://support.release-fixture.danyeodam.app',
       },
       stdio: 'inherit',
     },
@@ -85,6 +92,15 @@ try {
       ),
       `The ${platform} production bundle does not embed the build source commit.`,
     );
+    for (const forbiddenMarker of forbiddenServerApprovalMarkers) {
+      assert(
+        !containsBytesRecursively(
+          platformDirectory,
+          Buffer.from(forbiddenMarker, 'utf8'),
+        ),
+        `The ${platform} production bundle contains server-only release approval data.`,
+      );
+    }
   }
   console.log(
     'Production iOS, Android, and web bundles were exported with the build source commit.',

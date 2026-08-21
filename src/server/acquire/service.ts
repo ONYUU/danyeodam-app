@@ -7,6 +7,7 @@ import {
 import type {
   AcquireFailurePayload,
   AcquireRepository,
+  BonusPackIssuanceScope,
   CreatedResult,
   InternalAcquisition,
   InternalCard,
@@ -27,6 +28,7 @@ export type AcquireServiceOutcome = {
 function projectSuccess(
   acquisition: InternalAcquisition,
   card: InternalCard,
+  bonusPack?: ReplayResult["bonus_pack"],
 ): PublicAcquireBody {
   return {
     acquisition: {
@@ -45,6 +47,9 @@ function projectSuccess(
     back: {
       date_kst: acquisition.acquired_on_kst,
     },
+    ...(bonusPack === undefined || bonusPack === null
+      ? {}
+      : { bonus_pack: bonusPack }),
   };
 }
 
@@ -121,7 +126,7 @@ async function recordTerminalFailure(
 function successOutcome(result: CreatedResult | ReplayResult): AcquireServiceOutcome {
   return {
     status: result.status === "created" ? 201 : 200,
-    body: projectSuccess(result.acquisition, result.card),
+    body: projectSuccess(result.acquisition, result.card, result.bonus_pack),
   };
 }
 
@@ -130,6 +135,7 @@ export async function acquireCard(
   context: {
     authUserId: string;
     publicGateOpen: boolean;
+    bonusPackIssuanceScope?: BonusPackIssuanceScope;
   },
   dependencies: AcquireServiceDependencies,
 ): Promise<AcquireServiceOutcome> {
@@ -215,6 +221,7 @@ export async function acquireCard(
       publicGateOpen: context.publicGateOpen,
       expectedSpotUpdatedAt: acquisitionContext.spot.updated_at,
       expectedUserId,
+      bonusPackIssuanceScope: context.bonusPackIssuanceScope ?? "off",
     });
 
     if (commitResult.status === "created" || commitResult.status === "replay") {
