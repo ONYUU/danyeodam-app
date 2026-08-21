@@ -7,6 +7,10 @@
   "engines": {
     "node": ">=24.0.0"
   },
+  "allowScripts": {
+    "fsevents@2.3.3": true,
+    "unrs-resolver@1.12.2": true
+  },
   "scripts": {
     "dev": "next dev",
     "build": "npm run env:assert:deployment && next build",
@@ -41,7 +45,7 @@
     "db:advisors": "supabase db advisors --local --type all --level warn --fail-on error"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.112.2",
+    "@supabase/supabase-js": "2.112.3",
     "next": "16.3.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -56,7 +60,7 @@
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.0",
     "pg": "8.22.0",
-    "supabase": "2.113.0",
+    "supabase": "2.115.0",
     "typescript": "6.0.3",
     "vitest": "4.1.10"
   }

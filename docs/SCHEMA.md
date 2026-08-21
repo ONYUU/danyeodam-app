@@ -431,6 +431,14 @@ RLS 정책은 직접 권한이 잘못 추가되더라도 행 소유권을 제한
 허용한다. 함수는 고정된 빈 `search_path`와 완전 수식 객체명을 사용하며 다른
 함수의 기본 `PUBLIC EXECUTE`는 회수한다.
 
+Supabase의 2026 Data API 자동 노출 기본값 변경과 무관하게 새 객체는
+deny-by-default다. `postgres`가 앞으로 만드는 `public` 테이블·시퀀스에는
+`anon`·`authenticated`·`service_role` 권한이 자동 부여되지 않고, 모든 스키마의
+새 함수도 기본 `PUBLIC EXECUTE`를 받지 않는다. 따라서 새 Data API 객체는 같은
+전진 마이그레이션에서 RLS와 최소 `GRANT`를 명시하기 전까지 접근할 수 없으며,
+서버 RPC는 `api_private` 스키마 `USAGE`와 정확한 함수 시그니처 `EXECUTE`를
+`service_role`에 각각 부여해야 한다.
+
 ## 6. Storage
 
 - `personal-card-temp`: 비공개 임시 업로드. PNG/JPEG/WebP, 최대 10 MiB,
