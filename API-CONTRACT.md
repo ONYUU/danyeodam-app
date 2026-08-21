@@ -745,6 +745,18 @@ X-Deletion-Status-Token: <status_token>
   `BONUS_PACK_CURSOR_SECRET`은 32자 이상 서버 Secret이며 `NEXT_PUBLIC_` 변수나 앱 번들에
   넣지 않는다
 
+### 운영 출시 상태 증명
+
+- `GET /api/release-state`는 Vercel의 실제 production runtime에서만 200을 반환한다.
+  응답은 `schemaVersion=1`, `vercelEnvironment=production`,
+  `vercelTargetEnvironment=production`, immutable deployment/project ID, Vercel Git SHA와
+  위 네 feature flag의 실제 값만 포함한다. Secret 원문은 포함하지 않는다.
+- Vercel system environment가 없거나 preview/development이면 일반 404로 fail closed한다.
+  응답은 `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`다.
+- 스토어 출시 검사는 이 한 번의 HTTPS 응답과 Vercel의 읽기 전용 deployment 조회를
+  교차 대조한다. 수기로 작성한 rollout JSON이나 현재 project env 목록만으로 실제
+  production 배포의 설정을 증명했다고 간주하지 않는다.
+
 ### v0.2.3 → v0.3.8 공유 전환
 
 1. 배포 전 `PUBLIC_RECRUIT_GATE=false`, `PUBLIC_SHARE_CREATION=false`, `PUBLIC_SHARE_PUBLICATION=false`를 확인한다

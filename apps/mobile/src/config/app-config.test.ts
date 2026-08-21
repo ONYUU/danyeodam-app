@@ -194,6 +194,104 @@ describe('Expo application config', () => {
     expect(config.ios?.infoPlist?.CFBundleAllowMixedLocalizations).toBe(true);
   });
 
+  it('declares linked first-party collection and required-reason APIs', () => {
+    process.env.APP_ENV = 'development';
+
+    const privacyManifests = readConfig().ios?.privacyManifests;
+
+    expect(privacyManifests).toEqual({
+      NSPrivacyAccessedAPITypes: [
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryUserDefaults',
+          NSPrivacyAccessedAPITypeReasons: ['CA92.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryFileTimestamp',
+          NSPrivacyAccessedAPITypeReasons: ['0A2A.1', '3B52.1', 'C617.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryDiskSpace',
+          NSPrivacyAccessedAPITypeReasons: ['85F4.1', 'E174.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategorySystemBootTime',
+          NSPrivacyAccessedAPITypeReasons: ['35F9.1'],
+        },
+      ],
+      NSPrivacyCollectedDataTypes: [
+        ...[
+          'NSPrivacyCollectedDataTypeEmailAddress',
+        ].map((dataType) => ({
+          NSPrivacyCollectedDataType: dataType,
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+          ],
+        })),
+        ...[
+          'NSPrivacyCollectedDataTypePreciseLocation',
+        ].map((dataType) => ({
+          NSPrivacyCollectedDataType: dataType,
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+            'NSPrivacyCollectedDataTypePurposeAnalytics',
+          ],
+        })),
+        ...[
+          'NSPrivacyCollectedDataTypePhotosorVideos',
+          'NSPrivacyCollectedDataTypeOtherUserContent',
+        ].map((dataType) => ({
+          NSPrivacyCollectedDataType: dataType,
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+          ],
+        })),
+        ...[
+          'NSPrivacyCollectedDataTypeUserID',
+        ].map((dataType) => ({
+          NSPrivacyCollectedDataType: dataType,
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+            'NSPrivacyCollectedDataTypePurposeAnalytics',
+          ],
+        })),
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeDeviceID',
+          NSPrivacyCollectedDataTypeLinked: false,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+          ],
+        },
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeGameplayContent',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+          ],
+        },
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeProductInteraction',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: [
+            'NSPrivacyCollectedDataTypePurposeAnalytics',
+          ],
+        },
+      ],
+      NSPrivacyTracking: false,
+      NSPrivacyTrackingDomains: [],
+    });
+  });
+
   it('fails closed when a production API endpoint is absent', () => {
     process.env.APP_ENV = 'production';
     delete process.env.EXPO_PUBLIC_API_BASE_URL;
@@ -269,11 +367,25 @@ describe('Expo application config', () => {
 
     const sourceCommitSha = 'a'.repeat(40);
     process.env.EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA = sourceCommitSha;
-    expect(readConfig().extra?.buildSourceCommitSha).toBe(sourceCommitSha);
+    const config = readConfig();
+    expect(config.extra?.buildSourceCommitSha).toBe(sourceCommitSha);
+    expect(config.plugins).toContainEqual([
+      './plugins/with-build-source-commit.cjs',
+      { sourceCommitSha },
+    ]);
 
     process.env.EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA = sourceCommitSha.toUpperCase();
     expect(readConfig).toThrow(
-      'Production EAS builds require EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA',
+      'EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA must be a lowercase 40-character Git SHA',
+    );
+  });
+
+  it('rejects a malformed optional source marker outside EAS as well', () => {
+    process.env.APP_ENV = 'e2e';
+    process.env.EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA = 'not-a-git-sha';
+
+    expect(readConfig).toThrow(
+      'EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA must be a lowercase 40-character Git SHA',
     );
   });
 
@@ -298,5 +410,9 @@ describe('Expo application config', () => {
     );
     expect(config.extra).not.toHaveProperty('mobilePublicConfigSha256');
     expect(config.extra).not.toHaveProperty('BONUS_PACK_ISSUANCE_SCOPE');
+    expect(config.plugins).toContainEqual([
+      './plugins/with-build-source-commit.cjs',
+      { sourceCommitSha: null },
+    ]);
   });
 });

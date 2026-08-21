@@ -66,11 +66,22 @@ npm run --silent release:public-config-sha256 -- <exact-source-sha> <off|partici
 
 `expectedServerBonusPackIssuanceScope`는 승인자의 기대값을 모바일 빌드 승인에 묶는다.
 EAS는 Vercel의 실제 `BONUS_PACK_ISSUANCE_SCOPE`를 읽지 않으므로, 이 필드만으로
-운영 서버 scope가 같다고 검증된 것은 아니다. 출시 직전에 승인파일의
-기대값과 Vercel deployment env를 운영자가 별도로 대조해야 한다. Vercel 빌드
-gate는 실제 서버 env의 필수값·형식·키 역할을 검증하지만, EAS 승인파일과의
-운영 scope 동일성까지 증명하지는 않는다.
+운영 서버 scope가 같다고 검증된 것은 아니다. 스토어 출시 명령은 production API의
+`GET /api/release-state`가 반환한 실제 runtime scope·세 공개 feature flag·Vercel
+deployment/project/Git SHA를 읽기 전용 Vercel deployment 조회와 교차 대조해야 한다.
+현재 project env 목록은 이미 만들어진 deployment의 적용값을 증명하지 않으므로
+대체 증거로 사용하지 않는다. 이 live 대조가 없으면 제출 패킷은 fail closed한다.
+Vercel 프로젝트의 **Automatically expose System Environment Variables** 설정도
+활성화해야 한다. 비활성화되어 deployment/project/Git system 값이 빠지면 endpoint는
+404로 fail closed한다. 운영 절차는 Vercel의
+[System environment variables](https://vercel.com/docs/environment-variables/system-environment-variables)를 따른다.
 
 검증을 통과하면 빌드 SHA를 `EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA`로 후속 EAS 단계에 전달한다.
 서버 scope나 `mobilePublicConfigSha256`는 앱 `extra`에 추가하지 않는다. 승인파일 부재·권한
 오류·형식 오류·SHA 불일치·공개 설정 변조는 모두 production 빌드를 중단한다.
+
+같은 SHA는 Expo config plugin이 iOS 서명 대상 `Info.plist`의
+`DanyeodamBuildSourceCommitSha`와 Android 서명 대상 application manifest의
+`kr.danyeodam.app.BUILD_SOURCE_COMMIT_SHA`에 정확히 1개씩 기록한다. 출시 artifact
+검사는 이 고정 native marker만 신뢰하며, JavaScript bundle이나 임의 asset에서 같은
+문자열을 찾는 방식은 출처 증거로 인정하지 않는다.

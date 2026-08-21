@@ -35,6 +35,95 @@ const PUBLIC_BUILD_BLOCKED_ANDROID_PERMISSIONS = [
 ] as const;
 const FOREGROUND_LOCATION_DISCLOSURE =
   '다녀담은 사용자가 카드 획득을 시도할 때만 현재 위치를 확인합니다.';
+const APP_FUNCTIONALITY_PURPOSE =
+  'NSPrivacyCollectedDataTypePurposeAppFunctionality';
+const ANALYTICS_PURPOSE = 'NSPrivacyCollectedDataTypePurposeAnalytics';
+const IOS_PRIVACY_MANIFESTS = {
+  NSPrivacyAccessedAPITypes: [
+    {
+      NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryUserDefaults',
+      NSPrivacyAccessedAPITypeReasons: ['CA92.1'],
+    },
+    {
+      NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryFileTimestamp',
+      NSPrivacyAccessedAPITypeReasons: ['0A2A.1', '3B52.1', 'C617.1'],
+    },
+    {
+      NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryDiskSpace',
+      NSPrivacyAccessedAPITypeReasons: ['85F4.1', 'E174.1'],
+    },
+    {
+      NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategorySystemBootTime',
+      NSPrivacyAccessedAPITypeReasons: ['35F9.1'],
+    },
+  ],
+  NSPrivacyCollectedDataTypes: [
+    {
+      NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeEmailAddress',
+      NSPrivacyCollectedDataTypeLinked: true,
+      NSPrivacyCollectedDataTypeTracking: false,
+      NSPrivacyCollectedDataTypePurposes: [APP_FUNCTIONALITY_PURPOSE],
+    },
+    {
+      // Raw coordinates are not persisted, but the retained fact links the
+      // account to the exact visited POI and analytics events retain the
+      // account/spot interaction, so both functionality and analytics apply.
+      NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePreciseLocation',
+      NSPrivacyCollectedDataTypeLinked: true,
+      NSPrivacyCollectedDataTypeTracking: false,
+      NSPrivacyCollectedDataTypePurposes: [
+        APP_FUNCTIONALITY_PURPOSE,
+        ANALYTICS_PURPOSE,
+      ],
+    },
+    {
+      NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePhotosorVideos',
+      NSPrivacyCollectedDataTypeLinked: true,
+      NSPrivacyCollectedDataTypeTracking: false,
+      NSPrivacyCollectedDataTypePurposes: [APP_FUNCTIONALITY_PURPOSE],
+    },
+    {
+      NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeOtherUserContent',
+      NSPrivacyCollectedDataTypeLinked: true,
+      NSPrivacyCollectedDataTypeTracking: false,
+      NSPrivacyCollectedDataTypePurposes: [APP_FUNCTIONALITY_PURPOSE],
+    },
+    {
+      NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeUserID',
+      NSPrivacyCollectedDataTypeLinked: true,
+      NSPrivacyCollectedDataTypeTracking: false,
+      NSPrivacyCollectedDataTypePurposes: [
+        APP_FUNCTIONALITY_PURPOSE,
+        ANALYTICS_PURPOSE,
+      ],
+    },
+    {
+      // The public account-deletion status endpoint retains a scoped HMAC of
+      // the trusted client IP for at most 48 hours. It rate-limits a network
+      // source, is not joined to an account, and is never used for tracking.
+      NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeDeviceID',
+      NSPrivacyCollectedDataTypeLinked: false,
+      NSPrivacyCollectedDataTypeTracking: false,
+      NSPrivacyCollectedDataTypePurposes: [APP_FUNCTIONALITY_PURPOSE],
+    },
+    {
+      // Acquisitions and sealed/opened bonus packs are retained game progress,
+      // distinct from the interaction events in the analytics ledger below.
+      NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeGameplayContent',
+      NSPrivacyCollectedDataTypeLinked: true,
+      NSPrivacyCollectedDataTypeTracking: false,
+      NSPrivacyCollectedDataTypePurposes: [APP_FUNCTIONALITY_PURPOSE],
+    },
+    {
+      NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeProductInteraction',
+      NSPrivacyCollectedDataTypeLinked: true,
+      NSPrivacyCollectedDataTypeTracking: false,
+      NSPrivacyCollectedDataTypePurposes: [ANALYTICS_PURPOSE],
+    },
+  ],
+  NSPrivacyTracking: false,
+  NSPrivacyTrackingDomains: [],
+} satisfies NonNullable<NonNullable<ExpoConfig['ios']>['privacyManifests']>;
 
 export default ({ config }: ConfigContext): ExpoConfig => {
   const publicEnvironment = resolvePublicEnvironment({
@@ -51,6 +140,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     publicEnvironment.appEnvironment === 'e2e';
   const buildSourceCommitSha =
     process.env.EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA ?? null;
+  if (
+    buildSourceCommitSha !== null &&
+    !/^[a-f0-9]{40}$/.test(buildSourceCommitSha)
+  ) {
+    throw new Error(
+      'EXPO_PUBLIC_BUILD_SOURCE_COMMIT_SHA must be a lowercase 40-character Git SHA when provided.',
+    );
+  }
   if (
     (process.env.EAS_BUILD === 'true' ||
       process.env.EAS_BUILD_PROFILE === 'production') &&
@@ -105,6 +202,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       bundleIdentifier: 'kr.danyeodam.app',
       buildNumber: '1',
       supportsTablet: false,
+      privacyManifests: IOS_PRIVACY_MANIFESTS,
       config: {
         usesNonExemptEncryption: false,
       },
@@ -134,6 +232,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       favicon: './assets/images/favicon.png',
     },
     plugins: [
+      [
+        './plugins/with-build-source-commit.cjs',
+        { sourceCommitSha: buildSourceCommitSha },
+      ],
       'expo-router',
       [
         'expo-build-properties',
