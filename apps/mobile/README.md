@@ -181,16 +181,24 @@ GitHub Actions의 `Public code release preflight` 수동 실행도 공개 코드
 
 ## 의존성 보안 추적
 
-2026-08-21 기준 Expo SDK 57.0.15 고정 lockfile에 대해 `npm audit --omit=dev`는 Expo
-Metro 빌드 툴체인의 전이 의존성 `image-size` 1.2.1에서 high 8건을 보고합니다. 이는
-두 개의 동일 upstream DoS 권고가 의존성 그래프에 전파된 수치입니다. Metro 소스에는
-제한된 파서 대체가 병합됐고 Metro 0.84.5에는 해당 의존성이 제거됐습니다. 다만 현재
-Expo SDK 57.0.15의 호환 의존성은 Metro 0.84.4를 고정하므로 아직 이 수정판을 사용하지
-않습니다. Expo 호환성 검증 없이 Metro만 임의 재정의하지 않습니다.
-이 패키지는 배포된 앱 런타임이 아니라 Metro가 저장소의 신뢰된 정적 자산을 빌드할 때만
-사용합니다. 외부 업로드 파일을 Metro에 전달하지 않으며, 권리 승인된 고정 자산만 빌드합니다.
-따라서 upstream 수정 버전이 나올 때까지 빌드 범위 위험으로 기록하되, 신뢰되지 않은
-이미지가 빌드 입력으로 연결되면 즉시 출시 차단 항목으로 승격합니다.
+2026-08-21 기준 Expo SDK 57.0.15의 `@expo/metro`는 Metro 0.84.4 계열을 고정하며,
+이 계열의 전이 의존성 `image-size` 1.2.1에는 두 개의 DoS 권고가 있었습니다. Meta는
+제한된 파서로 교체한 0.84.5를 React Native 0.85·0.86 및 Expo fixture에서 검증해
+배포했습니다. 이 앱은 React Native 0.86.2를 사용하므로 Metro 관련 14개 패키지를 모두
+정확히 0.84.5로 함께 고정합니다. 일부 패키지만 혼합하는 변경은 테스트가 거부하며,
+lockfile에는 `image-size`가 존재해서는 안 됩니다.
+
+Expo Doctor는 SDK 57.0.15가 선언한 0.84.4와의 차이를 계속 경고합니다. 모바일 `doctor`
+명령은 그 검사를 비활성화하지 않고 전체 출력을 확인합니다. 나머지 20개 검사가 통과하고
+14개 패키지의 0.84.5 불일치만 정확히 보고되며 실제 설치·lockfile도 일치할 때만 이 알려진
+예외를 허용합니다. 다른 Doctor 실패나 부분 override는 그대로 빌드를 중단합니다.
+
+이 변경은 배포 앱의 기능 라이브러리가 아니라 정적 자산을 처리하는 빌드 툴체인에
+적용됩니다. 외부 업로드 파일을 Metro에 전달하지 않고, 공개 저장소 안전 검사가 승인된
+고정 PNG 3개만 허용하는 방어도 유지합니다. Expo가 같은 수정 또는 상위 수정판을 공식
+호환 세트에 포함한 뒤 전체 native config와 iOS·Android·Web export를 다시 통과한 경우에만
+override를 제거합니다. main 브랜치의 Dependabot 경고가 실제로 닫힐 때까지 GitHub Issue
+#5를 유지합니다.
 
 `xcode` 빌드 의존성이 가져오던 취약한 `uuid` 7.0.3은 npm override로 호환되는
 11.1.1로 상향했습니다. 해당 경로는 Expo native config/prebuild를 다시 검증합니다.
@@ -201,8 +209,8 @@ Expo SDK 57.0.15의 호환 의존성은 Metro 0.84.4를 고정하므로 아직 �
 CLI를 trusted release checkout에서만 `--offline`으로 실행하고, EAS 인증은 최소 권한의
 외부 비밀 저장소를 사용하며, 공식 패치 릴리스를 계속 추적합니다.
 
-- 매 Expo SDK 57 패치 릴리스와 월 1회 정기 점검 시 `npm audit --omit=dev` 및 Expo Doctor를 재실행합니다.
-- Expo 호환 의존성이 수정판을 채택하면 lockfile을 갱신하고 전체 native config·export 검증을 다시 수행합니다.
+- 매 Expo SDK 57 패치 릴리스와 월 1회 정기 점검 시 `npm audit --omit=dev`, Metro 전체 계열 버전 검사 및 Expo Doctor를 재실행합니다.
+- Expo 호환 의존성이 수정판을 채택하면 override 제거 후보로 lockfile을 갱신하고 전체 native config·3개 플랫폼 export를 다시 수행합니다.
 - critical 취약점 또는 앱 런타임에 직접 도달 가능한 취약점이 확인되면 제출 차단 항목으로 승격합니다.
 
 ## 제출 전 남은 외부 설정

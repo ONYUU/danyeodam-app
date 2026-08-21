@@ -21,7 +21,11 @@ const easConfig = JSON.parse(
 ) as EasConfig;
 const packageConfig = JSON.parse(
   readFileSync(join(process.cwd(), 'package.json'), 'utf8'),
-) as { packageManager?: string; overrides?: Record<string, string> };
+) as {
+  packageManager?: string;
+  overrides?: Record<string, string>;
+  scripts?: Record<string, string>;
+};
 const releaseToolPackage = JSON.parse(
   readFileSync(join(process.cwd(), '..', '..', 'tools', 'eas-cli', 'package.json'), 'utf8'),
 ) as {
@@ -36,8 +40,34 @@ const releaseToolLock = JSON.parse(
 ) as {
   packages?: Record<string, { integrity?: string; resolved?: string; version?: string }>;
 };
+const mobileLock = JSON.parse(
+  readFileSync(join(process.cwd(), 'package-lock.json'), 'utf8'),
+) as {
+  packages?: Record<string, { integrity?: string; resolved?: string; version?: string }>;
+};
+
+const expectedMetroOverrides = [
+  'metro',
+  'metro-babel-transformer',
+  'metro-cache',
+  'metro-cache-key',
+  'metro-config',
+  'metro-core',
+  'metro-file-map',
+  'metro-minify-terser',
+  'metro-resolver',
+  'metro-runtime',
+  'metro-source-map',
+  'metro-symbolicate',
+  'metro-transform-plugins',
+  'metro-transform-worker',
+] as const;
 
 describe('EAS toolchain policy', () => {
+  it('runs Expo Doctor through the fail-closed bounded Metro verifier', () => {
+    expect(packageConfig.scripts?.doctor).toBe('node ./scripts/run-expo-doctor.mjs');
+  });
+
   it('pins the exact CLI and requires a committed source tree', () => {
     expect(easConfig.cli).toMatchObject({
       version: '22.2.0',
@@ -92,9 +122,30 @@ describe('EAS toolchain policy', () => {
   });
 
   it('overrides the vulnerable transitive UUID used by the native Xcode tool', () => {
-    expect(packageConfig.overrides).toMatchObject({
+    expect(packageConfig.overrides).toEqual({
+      ...Object.fromEntries(expectedMetroOverrides.map((packageName) => [packageName, '0.84.5'])),
       uuid: '11.1.1',
     });
+  });
+
+  it('keeps the complete Metro stable family on the bounded image parser release', () => {
+    for (const packageName of expectedMetroOverrides) {
+      expect(mobileLock.packages?.[`node_modules/${packageName}`]).toMatchObject({
+        version: '0.84.5',
+        resolved: `https://registry.npmjs.org/${packageName}/-/${packageName}-0.84.5.tgz`,
+      });
+      expect(mobileLock.packages?.[`node_modules/${packageName}`]?.integrity).toMatch(/^sha512-/u);
+    }
+    const packageEntries = Object.entries(mobileLock.packages ?? {});
+    expect(packageEntries.filter(([entryPath]) => (
+      entryPath === 'node_modules/image-size' || entryPath.endsWith('/node_modules/image-size')
+    ))).toEqual([]);
+    expect(packageEntries.filter(([entryPath, lockedPackage]) => (
+      expectedMetroOverrides.some((packageName) => (
+        entryPath === `node_modules/${packageName}`
+          || entryPath.endsWith(`/node_modules/${packageName}`)
+      )) && lockedPackage.version !== '0.84.5'
+    ))).toEqual([]);
   });
 
   it('keeps every non-production profile on internal distribution', () => {
